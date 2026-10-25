@@ -46,7 +46,12 @@
       <% } %>
     </nav>
   </header>
-
+  <div style="background: #ffffff; padding: 15px 30px; display: flex; justify-content: center; border-bottom: 1px solid #e5e7eb;">
+    <form action="/" method="GET" style="display: flex; width: 100%; max-width: 600px; gap: 8px;">
+      <input type="text" name="search" placeholder="Search products by name or Product ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+      <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">Search</button>
+    </form>
+  </div>
   <div class="category-bar">
     <a href="/" class="<%= currentCategory === 'all' ? 'active' : '' %>">All Products</a>
     <a href="/?category=men" class="<%= currentCategory === 'men' ? 'active' : '' %>">Men</a>

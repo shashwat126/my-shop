@@ -2,40 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Checkout - Order Details</title>
+  <title>Checkout & Payment - Apna Store</title>
   <style>
-    body { font-family: sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 380px; }
-    h2 { margin-top: 0; }
-    .summary { background: #e0f2fe; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
-    label { font-weight: bold; font-size: 13px; display: block; margin-top: 10px; }
+    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
+    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 480px; }
+    label { font-weight: bold; font-size: 13px; display: block; margin-top: 14px; }
     input, textarea { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { width: 100%; background: #16a34a; color: white; padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-    button:hover { background: #15803d; }
+    .pay-btn { width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+    .pay-btn:hover { background: #1d4ed8; }
   </style>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
   <div class="card">
-    <h2>Delivery Details</h2>
-    <div class="summary">
-      <p><b>Total Items:</b> <%= cart.items.length %></p>
-      <p><b>Total Amount:</b> ₹<%= cart.totalPrice %> (Cash on Delivery)</p>
-    </div>
-
-    <form action="/place-order" method="POST">
+    <h2 style="margin-top: 0;">Order & Payment</h2>
+    <p>Total Payable: <b style="color: #16a34a; font-size: 22px;">₹<%= cart.totalPrice %></b></p>
+    
+    <form id="orderForm">
       <label>Full Name</label>
-      <input type="text" name="customerName" placeholder="Apna pura naam likhein" required>
+      <input type="text" id="customerName" required placeholder="Aapka Naam">
 
       <label>Mobile Number</label>
-      <input type="tel" name="phone" placeholder="10 digit number" required>
+      <input type="tel" id="phone" required placeholder="10 Digit Number">
 
       <label>Delivery Address</label>
-      <textarea name="address" rows="3" placeholder="Ghar/Dukaan ka pura pata aur Pincode" required></textarea>
+      <textarea id="address" rows="3" required placeholder="Full Address with Pincode"></textarea>
 
-      <button type="submit">Place Order (COD)</button>
+      <button type="submit" class="pay-btn">Proceed to Pay (UPI / Cards / NetBanking)</button>
     </form>
   </div>
+
+  <script>
+    document.getElementById('orderForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const customerName = document.getElementById('customerName').value;
+      const phone = document.getElementById('phone').value;
+      const address = document.getElementById('address').value;
+
+      // Backend se Razorpay Order ID lena
+      const res = await fetch('/create-razorpay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: <%= cart.totalPrice %> })
+      });
+      const data = await res.json();
+
+      if (!data.orderId) {
+        alert('Payment order create karne me dikkat aayi!');
+        return;
+      }
+
+      // Razorpay Checkout Popup
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: "INR",
+        name: "Apna Store",
+        description: "Order Checkout Payment",
+        order_id: data.orderId,
+        handler: async function (response) {
+          // Payment successful hone par backend me order save karna
+          const verifyRes = await fetch('/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              customerName,
+              phone,
+              address
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            window.location.href = '/order-success';
+          } else {
+            alert('Payment verify nahi ho saki!');
+          }
+        },
+        prefill: {
+          name: customerName,
+          contact: phone
+        },
+        theme: {
+          color: "#2563eb"
+        }
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+    });
+  </script>
 
 </body>
 </html>

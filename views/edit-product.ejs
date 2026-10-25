@@ -1,19 +1,16 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Edit Product - Admin</title>
+  <title>Edit Product - Store Admin</title>
   <style>
-    body { font-family: sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 380px; }
+    body { font-family: sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; padding: 40px 0; margin: 0; }
+    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 450px; }
     h2 { margin-top: 0; text-align: center; }
-    label { font-weight: bold; font-size: 14px; display: block; margin-top: 12px; }
-    input, textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    label { font-weight: bold; font-size: 13px; display: block; margin-top: 12px; }
+    input, textarea, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     button { width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-    button:hover { background: #1d4ed8; }
-    .back { text-align: center; margin-top: 15px; }
-    .back a { color: #555; text-decoration: none; font-size: 14px; }
+    .cancel-link { display: block; text-align: center; margin-top: 12px; color: #666; text-decoration: none; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -21,6 +18,9 @@
   <div class="card">
     <h2>Edit Product</h2>
     <form action="/admin/edit-product/<%= product._id %>" method="POST">
+      <label>Product ID (Unique)</label>
+      <input type="text" name="customId" value="<%= product.customId || '' %>" required>
+
       <label>Product Ka Naam</label>
       <input type="text" name="title" value="<%= product.title %>" required>
 
@@ -31,20 +31,24 @@
         <option value="kids" <%= product.category === 'kids' ? 'selected' : '' %>>Kids</option>
       </select>
 
-      <label>Keemat (Price in ₹)</label>
+      <label>Selling Price (₹)</label>
       <input type="number" name="price" value="<%= product.price %>" required>
 
-      <label>Photo URL</label>
-      <input type="url" name="imageUrl" value="<%= product.imageUrl %>" required>
+      <label>Original MRP (₹)</label>
+      <input type="number" name="originalPrice" value="<%= product.originalPrice || '' %>">
+
+      <label>Photo URLs (Comma se separate karein)</label>
+      <textarea name="images" rows="3" required><%= product.images && product.images.length > 0 ? product.images.join(', ') : (product.imageUrl || '') %></textarea>
+
+      <label>Available Sizes (Comma se separate karein, e.g. XS, S, M, L, XL)</label>
+      <input type="text" name="sizes" value="<%= product.sizes ? product.sizes.join(', ') : '' %>">
 
       <label>Description</label>
-      <textarea name="description" rows="3"><%= product.description %></textarea>
+      <textarea name="description" rows="3"><%= product.description || '' %></textarea>
 
       <button type="submit">Update Product</button>
+      <a href="/" class="cancel-link">← Cancel</a>
     </form>
-    <div class="back">
-      <a href="/">← Cancel</a>
-    </div>
   </div>
 
 </body>

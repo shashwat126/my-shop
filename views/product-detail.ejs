@@ -7,7 +7,7 @@
     body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
     header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
     header a { color: white; text-decoration: none; font-weight: bold; }
-    .container { max-width: 1000px; margin: 30px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .container { max-width: 1050px; margin: 30px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
     .product-layout { display: flex; gap: 40px; }
     .gallery { width: 45%; }
     .main-img { width: 100%; height: 380px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
@@ -19,10 +19,27 @@
     .selling-price { font-size: 26px; font-weight: bold; color: #16a34a; }
     .mrp { font-size: 18px; color: #888; text-decoration: line-through; margin-left: 10px; }
     .badge-deal { background: #fee2e2; color: #b91c1c; padding: 3px 6px; font-size: 12px; border-radius: 4px; font-weight: bold; }
-    .guarantees { display: flex; gap: 15px; margin: 15px 0; font-size: 13px; font-weight: bold; color: #374151; }
-    .btn-add { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+    
+    /* Box-Style Size Selector */
+    .size-container { margin: 20px 0; }
+    .size-boxes { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .size-box { border: 1px solid #ccc; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; min-width: 25px; text-align: center; }
+    .size-box:hover { border-color: #000; }
+    .size-box.selected { border: 2px solid #000; background: #000; color: #fff; }
+    
+    .btn-add { background: #e11d48; color: white; padding: 14px 28px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+    
+    /* Accordion Care details */
+    .info-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-top: 20px; background: #fafafa; }
+    .info-card h4 { margin: 0 0 8px 0; }
+    
+    /* Related Products Section */
+    .related-section { margin-top: 50px; border-top: 2px solid #eee; padding-top: 25px; }
+    .related-grid { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
+    .rel-card { width: 180px; flex-shrink: 0; background: white; border: 1px solid #eee; border-radius: 6px; text-decoration: none; color: inherit; padding: 10px; }
+    .rel-card img { width: 100%; height: 140px; object-fit: cover; border-radius: 4px; }
+
     .reviews-section { margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px; }
-    .review-card { background: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -34,7 +51,7 @@
 
   <div class="container">
     <div class="product-layout">
-      <!-- Image Gallery -->
+      <!-- Gallery -->
       <div class="gallery">
         <% const displayImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://via.placeholder.com/400'); %>
         <img id="currentImg" class="main-img" src="<%= displayImg %>" alt="<%= product.title %>">
@@ -48,17 +65,13 @@
         <% } %>
       </div>
 
-      <!-- Product Info -->
+      <!-- Details -->
       <div class="details">
         <span class="tag">ID: <%= product.customId || 'PROD' %></span> | 
         <span class="tag"><%= product.category ? product.category.toUpperCase() : 'GENERAL' %></span>
-        
         <h2 style="margin: 10px 0;"><%= product.title %></h2>
 
-        <!-- Rating Summary -->
-        <div>
-          ⭐ <b><%= (product.avgRating && product.avgRating > 0) ? product.avgRating.toFixed(1) : 'No reviews yet' %></b> / 5.0 (<%= product.reviews ? product.reviews.length : 0 %> reviews)
-        </div>
+        <div>⭐ <b><%= (product.avgRating && product.avgRating > 0) ? product.avgRating.toFixed(1) : 'No reviews' %></b> / 5.0 (<%= product.reviews ? product.reviews.length : 0 %> reviews)</div>
 
         <div class="price-box">
           <span class="selling-price">₹<%= product.price %></span>
@@ -68,38 +81,56 @@
           <% } %>
         </div>
 
-        <div class="guarantees">
-          <span>🔄 7 Days Easy Return & Refund</span>
-          <span>⚡ Cash on Delivery Available</span>
-        </div>
-
-        <p style="color: #4b5563; line-height: 1.5;"><%= product.description %></p>
-
-        <!-- Form for Cart with Size -->
-        <form action="/cart/add" method="POST">
+        <!-- Size Selection Form -->
+        <form action="/cart/add" method="POST" id="addToCartForm">
           <input type="hidden" name="productId" value="<%= product._id %>">
-          
+          <input type="hidden" name="selectedSize" id="selectedSizeInput" value="">
+
           <% if (product.sizes && product.sizes.length > 0) { %>
-            <label style="font-weight: bold; display: block; margin-bottom: 8px;">Select Size:</label>
-            <select name="selectedSize" required style="padding: 8px; width: 120px;">
-              <% product.sizes.forEach(size => { %>
-                <option value="<%= size %>"><%= size %></option>
-              <% }) %>
-            </select>
+            <div class="size-container">
+              <label style="font-weight: bold; color: #374151;">Please select a size:</label>
+              <div class="size-boxes">
+                <% product.sizes.forEach(size => { %>
+                  <div class="size-box" onclick="selectSize('<%= size %>', this)"><%= size %></div>
+                <% }) %>
+              </div>
+            </div>
           <% } %>
-          <br>
-          <button type="submit" class="btn-add">Add to Cart</button>
+
+          <button type="submit" class="btn-add">ADD TO CART</button>
         </form>
+
+        <!-- Product Material & Care Details -->
+        <div class="info-card">
+          <h4>📦 Product Details & Care</h4>
+          <p style="margin: 4px 0; font-size: 14px;"><b>Description:</b> <%= product.description %></p>
+          <p style="margin: 4px 0; font-size: 14px;"><b>Material & Care:</b> 100% Premium Cotton / Hand & Machine Wash</p>
+          <p style="margin: 4px 0; font-size: 14px;"><b>Country of Origin:</b> India</p>
+          <p style="margin: 4px 0; font-size: 14px; color: #16a34a;"><b>Returns:</b> 7 Days Easy Return & Refund</p>
+        </div>
       </div>
     </div>
 
-    <!-- Reviews Section -->
+    <!-- Suggestions / Related Products -->
+    <% if (relatedProducts && relatedProducts.length > 0) { %>
+      <div class="related-section">
+        <h3>You Might Also Like</h3>
+        <div class="related-grid">
+          <% relatedProducts.forEach(rel => { %>
+            <a href="/product/<%= rel._id %>" class="rel-card">
+              <img src="<%= (rel.images && rel.images.length > 0) ? rel.images[0] : (rel.imageUrl || 'https://via.placeholder.com/150') %>">
+              <h5 style="margin: 8px 0 4px 0;"><%= rel.title %></h5>
+              <span style="font-weight: bold; color: #16a34a;">₹<%= rel.price %></span>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Reviews -->
     <div class="reviews-section">
-      <h3>Customer Reviews & Ratings</h3>
-      
-      <!-- Review Form -->
-      <form action="/product/<%= product._id %>/review" method="POST" style="margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 6px;">
-        <h4 style="margin: 0 0 10px 0;">Apna Review Likhein</h4>
+      <h3>Customer Reviews</h3>
+      <form action="/product/<%= product._id %>/review" method="POST" style="margin-bottom: 25px; border: 1px solid #ddd; padding: 15px; border-radius: 6px;">
         <input type="text" name="userName" placeholder="Aapka Naam" required style="width: 100%; padding: 8px; margin-bottom: 8px; box-sizing: border-box;">
         <select name="rating" required style="padding: 8px; margin-bottom: 8px;">
           <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
@@ -111,20 +142,25 @@
         <textarea name="comment" rows="2" placeholder="Product kaisa laga..." required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
         <button type="submit" style="background: #1f2937; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px;">Submit Review</button>
       </form>
-
-      <!-- Review List -->
-      <% if (!product.reviews || product.reviews.length === 0) { %>
-        <p style="color: #666;">Is product par abhi koi review nahi hai.</p>
-      <% } else { %>
-        <% product.reviews.forEach(rev => { %>
-          <div class="review-card">
-            <b><%= rev.userName %></b> - <span>⭐ <%= rev.rating %>/5</span>
-            <p style="margin: 5px 0 0 0; color: #444;"><%= rev.comment %></p>
-          </div>
-        <% }) %>
-      <% } %>
     </div>
   </div>
+
+  <script>
+    const hasSizes = <%= (product.sizes && product.sizes.length > 0) ? 'true' : 'false' %>;
+
+    function selectSize(size, element) {
+      document.getElementById('selectedSizeInput').value = size;
+      document.querySelectorAll('.size-box').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+    }
+
+    document.getElementById('addToCartForm').addEventListener('submit', function(e) {
+      if (hasSizes && !document.getElementById('selectedSizeInput').value) {
+        e.preventDefault();
+        alert('Kripya cart me add karne se pehle Size select karein!');
+      }
+    });
+  </script>
 
 </body>
 </html>
