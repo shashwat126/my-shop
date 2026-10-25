@@ -2,164 +2,425 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= product.title %> - Apna Store</title>
+  <link rel="stylesheet" href="/css/style.css">
   <style>
-    body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
-    header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-    header a { color: white; text-decoration: none; font-weight: bold; }
-    .container { max-width: 1050px; margin: 30px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-    .product-layout { display: flex; gap: 40px; }
-    .gallery { width: 45%; }
-    .main-img { width: 100%; height: 380px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
-    .thumbnails { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; }
-    .details { width: 55%; }
-    .tag { font-size: 12px; background: #e5e7eb; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
-    .price-box { margin: 15px 0; }
-    .selling-price { font-size: 26px; font-weight: bold; color: #16a34a; }
-    .mrp { font-size: 18px; color: #888; text-decoration: line-through; margin-left: 10px; }
-    .badge-deal { background: #fee2e2; color: #b91c1c; padding: 3px 6px; font-size: 12px; border-radius: 4px; font-weight: bold; }
-    
-    /* Box-Style Size Selector */
-    .size-container { margin: 20px 0; }
-    .size-boxes { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-    .size-box { border: 1px solid #ccc; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; min-width: 25px; text-align: center; }
-    .size-box:hover { border-color: #000; }
-    .size-box.selected { border: 2px solid #000; background: #000; color: #fff; }
-    
-    .btn-add { background: #e11d48; color: white; padding: 14px 28px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
-    
-    /* Accordion Care details */
-    .info-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-top: 20px; background: #fafafa; }
-    .info-card h4 { margin: 0 0 8px 0; }
-    
-    /* Related Products Section */
-    .related-section { margin-top: 50px; border-top: 2px solid #eee; padding-top: 25px; }
-    .related-grid { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
-    .rel-card { width: 180px; flex-shrink: 0; background: white; border: 1px solid #eee; border-radius: 6px; text-decoration: none; color: inherit; padding: 10px; }
-    .rel-card img { width: 100%; height: 140px; object-fit: cover; border-radius: 4px; }
+    /* Product Detail Specific Animations & Layout */
+    .detail-container {
+      max-width: 1200px;
+      margin: 25px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      animation: fadeInUp 0.4s ease-out;
+    }
 
-    .reviews-section { margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px; }
+    /* Left Gallery */
+    .gallery-section {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .main-image-card {
+      width: 100%;
+      height: 480px;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .main-image-card img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s ease, opacity 0.25s ease;
+    }
+
+    .main-image-card:hover img {
+      transform: scale(1.04);
+    }
+
+    .thumbnail-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    .thumb-box {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      border: 2px solid #e2e8f0;
+      overflow: hidden;
+      cursor: pointer;
+      background: white;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .thumb-box.active {
+      border-color: #2563eb;
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Right Info Details */
+    .info-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .product-badge {
+      display: inline-block;
+      align-self: flex-start;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .product-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.3;
+    }
+
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #15803d;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .price-box {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin: 8px 0;
+    }
+
+    .price-box .price {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .price-box .mrp {
+      font-size: 16px;
+      color: #94a3b8;
+      text-decoration: line-through;
+    }
+
+    .discount-tag {
+      color: #16a34a;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* Interactive Size Boxes */
+    .size-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .size-boxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .size-chip {
+      min-width: 46px;
+      height: 46px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1.5px solid #cbd5e1;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .size-chip:hover {
+      border-color: #2563eb;
+      color: #2563eb;
+      transform: translateY(-2px);
+    }
+
+    .size-chip.selected {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+      transform: scale(1.08);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Action Buttons (Desktop) */
+    .cta-actions {
+      display: flex;
+      gap: 14px;
+      margin-top: 15px;
+    }
+
+    .btn-add-cart {
+      flex: 1;
+      padding: 14px;
+      border-radius: 10px;
+      background: white;
+      border: 2px solid #2563eb;
+      color: #2563eb;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-add-cart:hover {
+      background: #eff6ff;
+      transform: translateY(-2px);
+    }
+
+    /* Feature Highlights */
+    .perks-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      margin-top: 10px;
+    }
+
+    .perk-item {
+      font-size: 13px;
+      font-weight: 500;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Mobile Sticky Bottom Floating Bar */
+    .mobile-sticky-action {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 12px 16px;
+      box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+      z-index: 1000;
+    }
+
+    .mobile-sticky-btn {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 768px) {
+      .detail-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding-bottom: 80px;
+      }
+      .main-image-card {
+        height: 360px;
+      }
+      .cta-actions {
+        display: none; /* Desktop button hide karke sticky float bar layenge */
+      }
+      .mobile-sticky-action {
+        display: block;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>🛍️ Apna Store</h1>
-    <a href="/">← Back to Store</a>
+  <!-- Top Simple Navigation Header -->
+  <header class="navbar">
+    <a href="/" class="brand-logo">🛍️ Apna Store</a>
+    <div class="nav-actions">
+      <a href="/cart" class="nav-btn btn-primary">
+        🛒 Cart <span class="cart-badge"><%= cartCount %></span>
+      </a>
+      <a href="/" class="nav-btn" style="border: 1px solid #cbd5e1; color: #475569;">← Back to Shop</a>
+    </div>
   </header>
 
-  <div class="container">
-    <div class="product-layout">
-      <!-- Gallery -->
-      <div class="gallery">
-        <% const displayImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://via.placeholder.com/400'); %>
-        <img id="currentImg" class="main-img" src="<%= displayImg %>" alt="<%= product.title %>">
-        
-        <% if (product.images && product.images.length > 1) { %>
-          <div class="thumbnails">
-            <% product.images.forEach(img => { %>
-              <img src="<%= img %>" class="thumb" onclick="document.getElementById('currentImg').src='<%= img %>'">
-            <% }) %>
-          </div>
+  <main class="detail-container">
+    <!-- Left: Image Gallery -->
+    <section class="gallery-section">
+      <div class="main-image-card">
+        <% 
+          let defaultImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://via.placeholder.com/400');
+        %>
+        <img id="primaryImage" src="<%= defaultImg %>" alt="<%= product.title %>">
+      </div>
+
+      <% if (product.images && product.images.length > 1) { %>
+        <div class="thumbnail-row">
+          <% product.images.forEach((img, idx) => { %>
+            <div class="thumb-box <%= idx === 0 ? 'active' : '' %>" onclick="switchImage('<%= img %>', this)">
+              <img src="<%= img %>" alt="preview">
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Right: Product Information & Selection -->
+    <section class="info-section">
+      <span class="product-badge"><%= product.category %> Wear</span>
+      <h1 class="product-title"><%= product.title %></h1>
+
+      <div class="rating-badge">
+        ★ <%= (product.avgRating || 4.2).toFixed(1) %> | <%= product.reviews ? product.reviews.length : 12 %> Ratings
+      </div>
+
+      <div class="price-box">
+        <span class="price">₹<%= product.price %></span>
+        <% if (product.originalPrice) { %>
+          <span class="mrp">₹<%= product.originalPrice %></span>
+          <% let off = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100); %>
+          <span class="discount-tag">(<%= off %>% OFF)</span>
         <% } %>
       </div>
 
-      <!-- Details -->
-      <div class="details">
-        <span class="tag">ID: <%= product.customId || 'PROD' %></span> | 
-        <span class="tag"><%= product.category ? product.category.toUpperCase() : 'GENERAL' %></span>
-        <h2 style="margin: 10px 0;"><%= product.title %></h2>
+      <!-- Size Selection Form -->
+      <form id="addToCartForm" action="/cart/add" method="POST">
+        <input type="hidden" name="productId" value="<%= product._id %>">
+        <input type="hidden" name="selectedSize" id="selectedSizeInput" value="">
 
-        <div>⭐ <b><%= (product.avgRating && product.avgRating > 0) ? product.avgRating.toFixed(1) : 'No reviews' %></b> / 5.0 (<%= product.reviews ? product.reviews.length : 0 %> reviews)</div>
-
-        <div class="price-box">
-          <span class="selling-price">₹<%= product.price %></span>
-          <% if (product.originalPrice) { %>
-            <span class="mrp">₹<%= product.originalPrice %></span>
-            <span class="badge-deal">Lowest Price Guaranteed</span>
-          <% } %>
-        </div>
-
-        <!-- Size Selection Form -->
-        <form action="/cart/add" method="POST" id="addToCartForm">
-          <input type="hidden" name="productId" value="<%= product._id %>">
-          <input type="hidden" name="selectedSize" id="selectedSizeInput" value="">
-
-          <% if (product.sizes && product.sizes.length > 0) { %>
-            <div class="size-container">
-              <label style="font-weight: bold; color: #374151;">Please select a size:</label>
-              <div class="size-boxes">
-                <% product.sizes.forEach(size => { %>
-                  <div class="size-box" onclick="selectSize('<%= size %>', this)"><%= size %></div>
-                <% }) %>
-              </div>
+        <% if (product.sizes && product.sizes.length > 0) { %>
+          <div style="margin: 15px 0;">
+            <div class="size-title">Select Size:</div>
+            <div class="size-boxes">
+              <% product.sizes.forEach(size => { %>
+                <div class="size-chip" onclick="selectSize('<%= size %>', this)">
+                  <%= size %>
+                </div>
+              <% }) %>
             </div>
-          <% } %>
+          </div>
+        <% } %>
 
-          <button type="submit" class="btn-add">ADD TO CART</button>
-        </form>
-
-        <!-- Product Material & Care Details -->
-        <div class="info-card">
-          <h4>📦 Product Details & Care</h4>
-          <p style="margin: 4px 0; font-size: 14px;"><b>Description:</b> <%= product.description %></p>
-          <p style="margin: 4px 0; font-size: 14px;"><b>Material & Care:</b> 100% Premium Cotton / Hand & Machine Wash</p>
-          <p style="margin: 4px 0; font-size: 14px;"><b>Country of Origin:</b> India</p>
-          <p style="margin: 4px 0; font-size: 14px; color: #16a34a;"><b>Returns:</b> 7 Days Easy Return & Refund</p>
+        <div class="cta-actions">
+          <button type="button" class="btn-add-cart" onclick="submitCartForm()">
+            🛒 Add to Cart
+          </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Suggestions / Related Products -->
-    <% if (relatedProducts && relatedProducts.length > 0) { %>
-      <div class="related-section">
-        <h3>You Might Also Like</h3>
-        <div class="related-grid">
-          <% relatedProducts.forEach(rel => { %>
-            <a href="/product/<%= rel._id %>" class="rel-card">
-              <img src="<%= (rel.images && rel.images.length > 0) ? rel.images[0] : (rel.imageUrl || 'https://via.placeholder.com/150') %>">
-              <h5 style="margin: 8px 0 4px 0;"><%= rel.title %></h5>
-              <span style="font-weight: bold; color: #16a34a;">₹<%= rel.price %></span>
-            </a>
-          <% }) %>
-        </div>
-      </div>
-    <% } %>
-
-    <!-- Reviews -->
-    <div class="reviews-section">
-      <h3>Customer Reviews</h3>
-      <form action="/product/<%= product._id %>/review" method="POST" style="margin-bottom: 25px; border: 1px solid #ddd; padding: 15px; border-radius: 6px;">
-        <input type="text" name="userName" placeholder="Aapka Naam" required style="width: 100%; padding: 8px; margin-bottom: 8px; box-sizing: border-box;">
-        <select name="rating" required style="padding: 8px; margin-bottom: 8px;">
-          <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-          <option value="4">⭐⭐⭐⭐ (4/5)</option>
-          <option value="3">⭐⭐⭐ (3/5)</option>
-          <option value="2">⭐⭐ (2/5)</option>
-          <option value="1">⭐ (1/5)</option>
-        </select>
-        <textarea name="comment" rows="2" placeholder="Product kaisa laga..." required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
-        <button type="submit" style="background: #1f2937; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px;">Submit Review</button>
       </form>
-    </div>
+
+      <!-- Trust Badges / Perks -->
+      <div class="perks-grid">
+        <div class="perk-item">⚡ Fast 3-Day Delivery</div>
+        <div class="perk-item">🔄 7 Days Easy Returns</div>
+        <div class="perk-item">🔒 100% Secure Checkout</div>
+        <div class="perk-item">✨ Guaranteed Quality</div>
+      </div>
+
+      <!-- Description -->
+      <div style="margin-top: 15px;">
+        <h4 style="font-size: 15px; color: #1e293b; margin-bottom: 6px;">Description & Care</h4>
+        <p style="font-size: 14px; color: #64748b; line-height: 1.6;">
+          <%= product.description || "Premium quality fabric crafted for perfect comfort and long-lasting durability. Machine washable and shrink-resistant." %>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Sticky Add to Cart for Mobile Screens -->
+  <div class="mobile-sticky-action">
+    <button type="button" class="mobile-sticky-btn" onclick="submitCartForm()">
+      🛒 Add to Cart • ₹<%= product.price %>
+    </button>
   </div>
 
   <script>
-    const hasSizes = <%= (product.sizes && product.sizes.length > 0) ? 'true' : 'false' %>;
+    // Smooth Thumbnail Switching
+    function switchImage(src, thumbElement) {
+      const mainImg = document.getElementById('primaryImage');
+      mainImg.style.opacity = '0';
+      
+      setTimeout(() => {
+        mainImg.src = src;
+        mainImg.style.opacity = '1';
+      }, 150);
 
+      document.querySelectorAll('.thumb-box').forEach(el => el.classList.remove('active'));
+      thumbElement.classList.add('active');
+    }
+
+    // Size Selection Logic
     function selectSize(size, element) {
       document.getElementById('selectedSizeInput').value = size;
-      document.querySelectorAll('.size-box').forEach(el => el.classList.remove('selected'));
+      document.querySelectorAll('.size-chip').forEach(el => el.classList.remove('selected'));
       element.classList.add('selected');
     }
 
-    document.getElementById('addToCartForm').addEventListener('submit', function(e) {
-      if (hasSizes && !document.getElementById('selectedSizeInput').value) {
-        e.preventDefault();
-        alert('Kripya cart me add karne se pehle Size select karein!');
+    // Validate size before cart submit
+    function submitCartForm() {
+      const sizeInput = document.getElementById('selectedSizeInput');
+      const sizeBoxes = document.querySelectorAll('.size-chip');
+
+      if (sizeBoxes.length > 0 && !sizeInput.value) {
+        alert('⚠️ Kripya pehle apna size select karein!');
+        return;
       }
-    });
+
+      document.getElementById('addToCartForm').submit();
+    }
   </script>
 
 </body>

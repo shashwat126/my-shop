@@ -2,99 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Apna Store</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
-    header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 22px; }
-    header a { color: white; text-decoration: none; margin-left: 15px; font-weight: bold; }
-    .category-bar { background: white; padding: 12px 30px; display: flex; gap: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-    .category-bar a { text-decoration: none; color: #4b5563; font-weight: bold; padding: 6px 14px; border-radius: 20px; font-size: 14px; }
-    .category-bar a.active, .category-bar a:hover { background: #2563eb; color: white; }
-    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
-    .product-grid { display: flex; flex-wrap: wrap; gap: 20px; }
-    .product-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 230px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 15px; position: relative; }
-    .product-card img { width: 100%; height: 190px; object-fit: cover; }
-    .product-info { padding: 12px; flex-grow: 1; }
-    .badge-cat { font-size: 11px; text-transform: uppercase; background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #4b5563; }
-    .product-info h3 { margin: 8px 0; font-size: 17px; }
-    .price { font-size: 16px; font-weight: bold; color: #16a34a; margin: 0 0 10px 0; }
-    .btn-cart { background: #2563eb; color: white; text-align: center; padding: 10px; margin: 0 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; width: calc(100% - 24px); }
-    .btn-cart:hover { background: #1d4ed8; }
-    .admin-actions { display: flex; gap: 8px; margin: 10px 12px 0 12px; }
-    .admin-actions a { flex: 1; text-align: center; padding: 6px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; }
-    .btn-edit { background: #fef08a; color: #854d0e; }
-    .btn-del { background: #fee2e2; color: #991b1b; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛍️ Apna Store</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-  <header>
-    <h1>🛍️ Apna Store</h1>
-    <nav>
-      <a href="/cart">🛒 Cart (<%= cartCount %>)</a>
+  <!-- Top Glass Navbar -->
+  <header class="navbar">
+    <a href="/" class="brand-logo">🛍️ Apna Store</a>
+
+    <div class="search-container">
+      <span class="search-icon">🔍</span>
+      <form action="/" method="GET">
+        <input type="text" name="search" placeholder="Search clothes, shoes, items..." value="<%= searchQuery || '' %>">
+      </form>
+    </div>
+
+    <!-- Desktop Action Buttons -->
+    <div class="nav-actions">
+      <a href="/cart" class="nav-btn btn-primary">
+        🛒 Cart <span class="cart-badge"><%= cartCount %></span>
+      </a>
+
       <% if (currentUser) { %>
-        <span style="margin-left: 15px;">Hi, <%= currentUser.name %></span>
-        <% if (currentUser.role === 'admin') { %>
-          <a href="/admin/add-product" style="color: #4ade80;">+ Add Product</a>
-          <a href="/admin/orders" style="color: #60a5fa;">📦 Orders</a>
+        <span style="font-size: 14px; font-weight: 600;">Hi, <%= currentUser.name %></span>
+        <% if (isAdmin) { %>
+          <a href="/admin/add-product" class="nav-btn" style="background:#0f172a; color:white;">+ Add Item</a>
+          <a href="/admin/orders" class="nav-btn" style="background:#e2e8f0; color:#0f172a;">Orders</a>
         <% } %>
-        <a href="/logout" style="color: #f87171;">Logout</a>
+        <a href="/logout" class="nav-btn" style="color: #ef4444;">Logout</a>
       <% } else { %>
-        <a href="/login">Login</a>
-        <a href="/signup">Sign Up</a>
+        <a href="/login" class="nav-btn" style="border: 1px solid #cbd5e1; color: #334155;">Login</a>
+        <a href="/signup" class="nav-btn btn-primary">Sign Up</a>
       <% } %>
-    </nav>
+    </div>
   </header>
-  <div style="background: #ffffff; padding: 15px 30px; display: flex; justify-content: center; border-bottom: 1px solid #e5e7eb;">
-    <form action="/" method="GET" style="display: flex; width: 100%; max-width: 600px; gap: 8px;">
-      <input type="text" name="search" placeholder="Search products by name or Product ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-      <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">Search</button>
-    </form>
-  </div>
-  <div class="category-bar">
-    <a href="/" class="<%= currentCategory === 'all' ? 'active' : '' %>">All Products</a>
-    <a href="/?category=men" class="<%= currentCategory === 'men' ? 'active' : '' %>">Men</a>
-    <a href="/?category=women" class="<%= currentCategory === 'women' ? 'active' : '' %>">Women</a>
-    <a href="/?category=kids" class="<%= currentCategory === 'kids' ? 'active' : '' %>">Kids</a>
+
+  <!-- Horizontal Scrollable Categories -->
+  <div class="category-scroll">
+    <a href="/" class="pill <%= currentCategory === 'all' ? 'active' : '' %>">All Items</a>
+    <a href="/?category=men" class="pill <%= currentCategory === 'men' ? 'active' : '' %>">Men's Wear</a>
+    <a href="/?category=women" class="pill <%= currentCategory === 'women' ? 'active' : '' %>">Women's Wear</a>
+    <a href="/?category=kids" class="pill <%= currentCategory === 'kids' ? 'active' : '' %>">Kids Fashion</a>
   </div>
 
-  <div class="container">
-    <h2><%= currentCategory.toUpperCase() %> COLLECTION</h2>
-    
+  <!-- Responsive Product Grid -->
+  <main class="product-grid">
     <% if (products.length === 0) { %>
-      <p>Is category me abhi koi product nahi hai.</p>
+      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+        <h3>Koi product nahi mila!</h3>
+        <p style="color: #64748b;">Dusri category ya search try karein.</p>
+      </div>
     <% } %>
 
-    <div class="product-grid">
-      <% products.forEach(product => { %>
-        <div class="product-card">
-          <!-- Card click se Detail Page khulega -->
-          <a href="/product/<%= product._id %>" style="text-decoration: none; color: inherit;">
-            <img src="<%= (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://via.placeholder.com/200') %>" alt="<%= product.title %>">
-            <div class="product-info">
-              <span class="badge-cat"><%= product.customId || 'PROD' %></span>
-              <h3><%= product.title %></h3>
-              <p class="price">₹<%= product.price %></p>
-              <p style="font-size: 12px; color: #e11d48; font-weight: bold; margin: 0;">⚡ Lowest Price | 7 Days Return</p>
-            </div>
-          </a>
-
-          <form action="/cart/add" method="POST">
-            <input type="hidden" name="productId" value="<%= product._id %>">
-            <button type="submit" class="btn-cart">Add to Cart</button>
-          </form>
-
-          <% if (currentUser && currentUser.role === 'admin') { %>
-            <div class="admin-actions">
-              <a href="/admin/edit-product/<%= product._id %>" class="btn-edit">Edit</a>
-              <a href="/admin/delete-product/<%= product._id %>" class="btn-del" onclick="return confirm('Kya aap is product ko delete karna chahte hain?')">Delete</a>
-            </div>
-          <% } %>
+    <% products.forEach(p => { %>
+      <div class="product-card" onclick="window.location.href='/product/<%= p._id %>'">
+        <div class="card-img-wrapper">
+          <img src="<%= (p.images && p.images.length > 0) ? p.images[0] : (p.imageUrl || 'https://via.placeholder.com/300') %>" alt="<%= p.title %>" loading="lazy">
         </div>
-      <% }) %>
-    </div>
-  </div>
+        <div class="card-body">
+          <h3 class="card-title"><%= p.title %></h3>
+          <div class="price-row">
+            <span class="current-price">₹<%= p.price %></span>
+            <% if (p.originalPrice) { %>
+              <span class="old-price">₹<%= p.originalPrice %></span>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </main>
+
+  <!-- Mobile Bottom Floating Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <a href="/" class="mobile-nav-item active">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="/cart" class="mobile-nav-item">
+      <span class="icon">🛒</span>
+      <span>Cart (<%= cartCount %>)</span>
+    </a>
+    <% if (currentUser) { %>
+      <a href="/logout" class="mobile-nav-item">
+        <span class="icon">🚪</span>
+        <span>Logout</span>
+      </a>
+    <% } else { %>
+      <a href="/login" class="mobile-nav-item">
+        <span class="icon">👤</span>
+        <span>Account</span>
+      </a>
+    <% } %>
+  </nav>
 
 </body>
 </html>

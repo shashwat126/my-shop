@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify OTP - Apna Store</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 16px;
+    }
+    .otp-card {
+      background: white;
+      padding: 34px 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    h2 { margin: 0 0 6px 0; color: #0f172a; font-size: 22px; }
+    p { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
+    .email-highlight { color: #2563eb; font-weight: 600; }
+    .otp-input-box {
+      width: 180px;
+      padding: 12px;
+      font-size: 26px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 12px;
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .otp-input-box:focus { border-color: #2563eb; }
+    .btn-verify {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 13px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-verify:hover { background: #1d4ed8; }
+    .error-box {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+    .info-tag {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="otp-card">
+    <h2>Enter Verification Code</h2>
+    <p>A 4-digit code has been generated for <br><span class="email-highlight"><%= email %></span></p>
+
+    <% if (error) { %>
+      <div class="error-box"><%= error %></div>
+    <% } %>
+
+    <form action="/verify-otp" method="POST">
+      <input 
+        type="text" 
+        name="otp" 
+        class="otp-input-box" 
+        maxlength="4" 
+        placeholder="••••" 
+        autofocus 
+        required
+      >
+      <button type="submit" class="btn-verify">Verify & Create Account</button>
+    </form>
+
+    <div class="info-tag">
+      ℹ️ Test Mode: Terminal console mein OTP code check karein.
+    </div>
+
+    <div style="margin-top: 16px;">
+      <a href="/signup" style="font-size: 13px; color: #64748b; text-decoration: none;">← Change Email</a>
+    </div>
+  </div>
+
+</body>
+</html>

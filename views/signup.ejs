@@ -2,40 +2,103 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sign Up - Apna Store</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - Apna Store</title>
   <style>
-    body { font-family: sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 340px; }
-    h2 { margin-top: 0; text-align: center; }
-    label { font-weight: bold; font-size: 13px; display: block; margin-top: 10px; }
-    input { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-    button:hover { background: #1d4ed8; }
-    .footer-text { text-align: center; margin-top: 15px; font-size: 14px; }
-    .footer-text a { color: #2563eb; text-decoration: none; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 16px;
+    }
+    .auth-card {
+      background: white;
+      padding: 34px 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 400px;
+    }
+    h2 { margin: 0 0 6px 0; color: #0f172a; text-align: center; }
+    p { color: #64748b; font-size: 14px; text-align: center; margin-bottom: 22px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    input:focus { border-color: #2563eb; }
+    .btn-submit {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 13px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+    .error-box {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .footer-link { text-align: center; margin-top: 18px; font-size: 14px; color: #64748b; }
+    .footer-link a { color: #2563eb; text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>Naya Account Banayein</h2>
-    <% if (typeof error !== 'undefined' && error) { %>
-      <p style="color: red; font-size: 13px; text-align: center;"><%= error %></p>
+  <div class="auth-card">
+    <h2>Create Account</h2>
+    <p>Sign up to shop and place orders</p>
+
+    <% if (error) { %>
+      <div class="error-box"><%= error %></div>
     <% } %>
+
     <form action="/signup" method="POST">
-      <label>Pura Naam</label>
-      <input type="text" name="name" placeholder="Apna naam likhein" required>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="name" placeholder="Enter your full name" required>
+      </div>
 
-      <label>Email Address</label>
-      <input type="email" name="email" placeholder="example@mail.com" required>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" name="email" placeholder="name@gmail.com" required>
+      </div>
 
-      <label>Password</label>
-      <input type="password" name="password" placeholder="Password banayein" required>
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" name="phone" placeholder="10 digit mobile" maxlength="10">
+      </div>
 
-      <button type="submit">Sign Up</button>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Create password" required>
+      </div>
+
+      <button type="submit" class="btn-submit">Sign Up & Continue</button>
     </form>
-    <div class="footer-text">
-      Pehle se account hai? <a href="/login">Login karein</a>
+
+    <div class="footer-link">
+      Already have an account? <a href="/login">Login</a>
     </div>
   </div>
 
