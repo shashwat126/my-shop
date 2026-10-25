@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const Razorpay = require('razorpay');
+const nodemailer = require('nodemailer');
 const path = require('path');
 const dns = require('dns');
 
@@ -13,7 +14,45 @@ try {
 
 const app = express();
 
-// --- Models & Schemas ---
+// --- Live Email Transporter (Nodemailer) ---
+// 👇 APNA REAL GMAIL ID YAHAN DALEIN:
+const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: SENDER_EMAIL,
+    pass: 'dpsnszgeqxktcpsn' // Aapka generate kiya hua 16-digit App Password
+  }
+});
+
+// Helper function: Live Signup OTP Email
+async function sendOtpEmail(toEmail, otp) {
+  const mailOptions = {
+    from: `"Apna Store Support" <${SENDER_EMAIL}>`,
+    to: toEmail,
+    subject: 'Your Apna Store Verification Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+        <h2 style="color: #1e3a8a; text-align: center; margin-bottom: 8px;">🛍️ Apna Store</h2>
+        <p style="font-size: 15px; color: #334155; margin-bottom: 20px;">Hello,</p>
+        <p style="font-size: 15px; color: #334155;">Apna Store par aapka account register karne ke liye OTP code neeche diya gaya hai:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #2563eb; background: #eff6ff; padding: 12px 24px; border-radius: 8px; border: 1px dashed #2563eb; display: inline-block;">
+            ${otp}
+          </span>
+        </div>
+        <p style="font-size: 13px; color: #64748b; line-height: 1.5;">Yeh OTP agle 10 minutes tak valid hai. Kripya ise kisi ke sath share na karein.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Apna Store • Secure Shopping</p>
+      </div>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+}
+
+// --- Schemas & Models ---
 const productSchema = new mongoose.Schema({
   customId: { type: String, unique: true },
   title: { type: String, required: true },
@@ -89,7 +128,7 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Global Session Variables for All Views
+// Global View Variables
 app.use((req, res, next) => {
   const currentCart = req.session.cart || { items: [], totalQty: 0, totalPrice: 0 };
   res.locals.cart = currentCart;
@@ -111,23 +150,19 @@ mongoose.connect(MONGO_URI, {
 
 // --- Auth Protection Middlewares ---
 const requireLogin = (req, res, next) => {
-  if (req.session.user || req.session.isAdmin) {
-    return next();
-  }
+  if (req.session.user || req.session.isAdmin) return next();
   req.session.returnTo = req.originalUrl;
   res.redirect('/login');
 };
 
 const checkAdmin = (req, res, next) => {
-  if (req.session.isAdmin || req.session.user?.role === 'admin') {
-    return next();
-  }
+  if (req.session.isAdmin || req.session.user?.role === 'admin') return next();
   res.redirect('/login');
 };
 
-// ================= PUBLIC & PRODUCT ROUTES ================= //
+// ================= PUBLIC ROUTES ================= //
 
-// 1. Home Page (Search + Category Filter)
+// Home Page
 app.get('/', async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -156,7 +191,7 @@ app.get('/', async (req, res) => {
   }
 });
 
-// 2. Product Detail Page (Publicly Viewable)
+// Product Detail Page (Public View)
 app.get('/product/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -173,7 +208,7 @@ app.get('/product/:id', async (req, res) => {
   }
 });
 
-// 3. Product Review Submission
+// Product Review Submit
 app.post('/product/:id/review', requireLogin, async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -195,7 +230,7 @@ app.post('/product/:id/review', requireLogin, async (req, res) => {
   }
 });
 
-// ================= AUTHENTICATION & OTP ROUTES ================= //
+// ================= AUTHENTICATION & LIVE OTP ================= //
 
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
@@ -212,7 +247,6 @@ app.post('/login', async (req, res) => {
       return res.redirect('/admin/dashboard');
     }
 
-    // Customer Credentials
     const user = await User.findOne({ 
       email: email.trim().toLowerCase(), 
       password: password 
@@ -222,9 +256,7 @@ app.post('/login', async (req, res) => {
       req.session.user = { id: user._id, name: user.name, email: user.email, role: user.role };
       req.session.isAdmin = user.role === 'admin';
       
-      if (user.role === 'admin') {
-        return res.redirect('/admin/dashboard');
-      }
+      if (user.role === 'admin') return res.redirect('/admin/dashboard');
 
       const redirectUrl = req.session.returnTo || '/';
       delete req.session.returnTo;
@@ -237,12 +269,12 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Signup Page 1: Input Form
+// Signup Form
 app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
-// Signup Step 1: Form Submit & OTP Generation
+// Step 1: Form Submit -> Generate & Send Real Email OTP
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -251,25 +283,33 @@ app.post('/signup', async (req, res) => {
       return res.render('signup', { error: 'Sabhi required fields bharein!' });
     }
 
-    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.render('signup', { error: 'Yeh Email pehle se registered hai! Login karein.' });
     }
 
-    // 4-Digit Random Test OTP
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
     req.session.pendingSignup = {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       phone: phone ? phone.trim() : '',
       password: password,
       otp: generatedOtp
     };
 
+    // Live Email Send
+    try {
+      await sendOtpEmail(cleanEmail, generatedOtp);
+      console.log(`✉️ Live OTP Email dispatched to: ${cleanEmail}`);
+    } catch (mailErr) {
+      console.error('Nodemailer Error:', mailErr.message);
+    }
+
     console.log(`\n==============================================`);
     console.log(`🔑 APNA STORE REGISTRATION OTP: [ ${generatedOtp} ]`);
-    console.log(`📩 Recipient: ${email}`);
+    console.log(`📩 Sent to: ${cleanEmail}`);
     console.log(`==============================================\n`);
 
     res.redirect('/verify-otp');
@@ -278,31 +318,27 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Signup Page 2: OTP Entry View
+// Step 2: OTP Entry View
 app.get('/verify-otp', (req, res) => {
-  if (!req.session.pendingSignup) {
-    return res.redirect('/signup');
-  }
+  if (!req.session.pendingSignup) return res.redirect('/signup');
   res.render('verify-otp', { 
     email: req.session.pendingSignup.email,
     error: null 
   });
 });
 
-// Signup Step 2: OTP Verification & Database Insertion
+// Step 3: Verify OTP & Insert Account
 app.post('/verify-otp', async (req, res) => {
   try {
     const { otp } = req.body;
     const pending = req.session.pendingSignup;
 
-    if (!pending) {
-      return res.redirect('/signup');
-    }
+    if (!pending) return res.redirect('/signup');
 
     if (!otp || otp.trim() !== pending.otp) {
       return res.render('verify-otp', {
         email: pending.email,
-        error: 'Galat OTP! Kripya console me dekhkar sahi 4-digit OTP daalein.'
+        error: 'Galat OTP! Kripya apna email check karke sahi 4-digit code dalein.'
       });
     }
 
@@ -329,15 +365,110 @@ app.post('/verify-otp', async (req, res) => {
   }
 });
 
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/');
+// ================= FORGOT & RESET PASSWORD FLOW ================= //
+
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', { error: null });
+});
+
+app.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      return res.render('forgot-password', { error: 'Yeh email hamare database mein register nahi hai!' });
+    }
+
+    const resetOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    req.session.resetSession = {
+      email: cleanEmail,
+      otp: resetOtp
+    };
+
+    try {
+      await transporter.sendMail({
+        from: `"Apna Store Support" <${SENDER_EMAIL}>`,
+        to: cleanEmail,
+        subject: 'Password Reset OTP - Apna Store',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #1e3a8a; text-align: center;">🛍️ Apna Store</h2>
+            <p style="font-size: 15px; color: #334155;">Hello,</p>
+            <p style="font-size: 15px; color: #334155;">Apna password reset karne ke liye OTP code neeche diya gaya hai:</p>
+            <div style="text-align: center; margin: 24px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #dc2626; background: #fef2f2; padding: 12px 24px; border-radius: 8px; border: 1px dashed #dc2626; display: inline-block;">
+                ${resetOtp}
+              </span>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes ke liye valid hai. Kisi ke sath share na karein.</p>
+          </div>
+        `
+      });
+      console.log(`✉️ Password reset OTP dispatched to: ${cleanEmail}`);
+    } catch (err) {
+      console.error('Nodemailer Error:', err.message);
+    }
+
+    console.log(`🔑 Backup Reset OTP: [ ${resetOtp} ]`);
+    res.redirect('/reset-password');
+  } catch (err) {
+    res.render('forgot-password', { error: 'Error: ' + err.message });
+  }
+});
+
+app.get('/reset-password', (req, res) => {
+  if (!req.session.resetSession) return res.redirect('/forgot-password');
+  res.render('reset-password', {
+    email: req.session.resetSession.email,
+    error: null
   });
 });
 
-// ================= CART & CHECKOUT ROUTES ================= //
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { otp, newPassword, confirmPassword } = req.body;
+    const resetSess = req.session.resetSession;
 
-// Cart Add (Login Required)
+    if (!resetSess) return res.redirect('/forgot-password');
+
+    if (!otp || otp.trim() !== resetSess.otp) {
+      return res.render('reset-password', {
+        email: resetSess.email,
+        error: 'Galat OTP! Kripya apna email check karke sahi 4-digit code dalein.'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.render('reset-password', {
+        email: resetSess.email,
+        error: 'Passwords match nahi kar rahe hain!'
+      });
+    }
+
+    await User.findOneAndUpdate(
+      { email: resetSess.email },
+      { password: newPassword }
+    );
+
+    req.session.resetSession = null;
+    res.redirect('/login');
+  } catch (err) {
+    res.render('reset-password', {
+      email: req.session.resetSession ? req.session.resetSession.email : '',
+      error: 'Error: ' + err.message
+    });
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/'));
+});
+
+// ================= CART & CHECKOUT ================= //
+
 app.post('/cart/add', requireLogin, async (req, res) => {
   try {
     const { productId, selectedSize } = req.body;
@@ -395,14 +526,12 @@ app.post('/cart/remove', (req, res) => {
   res.redirect('/cart');
 });
 
-// Checkout View (Login Required)
 app.get('/checkout', requireLogin, (req, res) => {
   const cart = req.session.cart;
   if (!cart || cart.items.length === 0) return res.redirect('/cart');
   res.render('checkout', { cart });
 });
 
-// Razorpay Order Creation API
 app.post('/create-razorpay-order', requireLogin, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -423,7 +552,6 @@ app.post('/create-razorpay-order', requireLogin, async (req, res) => {
   }
 });
 
-// Verify Payment & Save Customer Order
 app.post('/verify-payment', requireLogin, async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, customerName, phone, address } = req.body;
@@ -450,7 +578,7 @@ app.post('/verify-payment', requireLogin, async (req, res) => {
       razorpayPaymentId
     });
 
-    req.session.cart = null; // Reset cart on successful order
+    req.session.cart = null;
     res.json({ success: true });
   } catch (err) {
     console.error('Verify Payment Error:', err);
@@ -468,14 +596,12 @@ app.get('/order-success', (req, res) => {
   `);
 });
 
-// ================= DEDICATED ADMIN CONTROL CENTER ================= //
+// ================= DEDICATED ADMIN DASHBOARD ================= //
 
-// 1. Central Admin Dashboard (Review All Products, Orders & Revenue)
 app.get('/admin/dashboard', checkAdmin, async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
     const orders = await Order.find().sort({ createdAt: -1 });
-
     const totalRevenue = orders.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
     res.render('admin-dashboard', {
@@ -490,7 +616,6 @@ app.get('/admin/dashboard', checkAdmin, async (req, res) => {
   }
 });
 
-// 2. Order Status Update (Action on received order)
 app.post('/admin/order/:id/status', checkAdmin, async (req, res) => {
   try {
     const { orderStatus } = req.body;
@@ -501,10 +626,7 @@ app.post('/admin/order/:id/status', checkAdmin, async (req, res) => {
   }
 });
 
-// 3. Add Product
-app.get('/admin/add-product', checkAdmin, (req, res) => {
-  res.render('add-product');
-});
+app.get('/admin/add-product', checkAdmin, (req, res) => res.render('add-product'));
 
 app.post('/admin/add-product', checkAdmin, async (req, res) => {
   try {
@@ -530,7 +652,6 @@ app.post('/admin/add-product', checkAdmin, async (req, res) => {
   }
 });
 
-// 4. Edit Product
 app.get('/admin/edit-product/:id', checkAdmin, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -565,7 +686,6 @@ app.post('/admin/edit-product/:id', checkAdmin, async (req, res) => {
   }
 });
 
-// 5. Delete Product
 app.post('/admin/delete-product/:id', checkAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
@@ -575,13 +695,7 @@ app.post('/admin/delete-product/:id', checkAdmin, async (req, res) => {
   }
 });
 
-// Backward compatibility routes
-app.get('/admin/login', (req, res) => res.redirect('/login'));
-app.post('/admin/login', (req, res) => res.redirect(307, '/login'));
-app.get('/admin/logout', (req, res) => res.redirect('/logout'));
-app.get('/admin/orders', checkAdmin, (req, res) => res.redirect('/admin/dashboard'));
-
-// Server Launch
+// Server Listen
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server live hai: http://localhost:${PORT}`);
