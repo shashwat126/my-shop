@@ -5,7 +5,7 @@ const Razorpay = require('razorpay');
 const path = require('path');
 const dns = require('dns');
 
-// DNS Fallback
+// DNS Fallback (IPv4 Priority)
 try {
   dns.setDefaultResultOrder('ipv4first');
   dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -13,7 +13,7 @@ try {
 
 const app = express();
 
-// --- Schemas & Models ---
+// --- Models & Schemas ---
 const productSchema = new mongoose.Schema({
   customId: { type: String, unique: true },
   title: { type: String, required: true },
@@ -89,7 +89,7 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Global Session Variables for Views
+// Global Session Variables for All Views
 app.use((req, res, next) => {
   const currentCart = req.session.cart || { items: [], totalQty: 0, totalPrice: 0 };
   res.locals.cart = currentCart;
@@ -109,7 +109,7 @@ mongoose.connect(MONGO_URI, {
   .then(() => console.log('✅ MongoDB connected successfully!'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// --- Auth Protection Middleware ---
+// --- Auth Protection Middlewares ---
 const requireLogin = (req, res, next) => {
   if (req.session.user || req.session.isAdmin) {
     return next();
@@ -119,13 +119,15 @@ const requireLogin = (req, res, next) => {
 };
 
 const checkAdmin = (req, res, next) => {
-  if (req.session.isAdmin || req.session.user?.role === 'admin') return next();
+  if (req.session.isAdmin || req.session.user?.role === 'admin') {
+    return next();
+  }
   res.redirect('/login');
 };
 
-// ================= ROUTES ================= //
+// ================= PUBLIC & PRODUCT ROUTES ================= //
 
-// 1. Home Page (Public)
+// 1. Home Page (Search + Category Filter)
 app.get('/', async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -154,7 +156,7 @@ app.get('/', async (req, res) => {
   }
 });
 
-// 2. Product Detail Page (PUBLIC - Har koi dekh sakta hai)
+// 2. Product Detail Page (Publicly Viewable)
 app.get('/product/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -171,20 +173,82 @@ app.get('/product/:id', async (req, res) => {
   }
 });
 
-// ================= AUTH & OTP ROUTES ================= //
+// 3. Product Review Submission
+app.post('/product/:id/review', requireLogin, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const product = await Product.findById(req.params.id);
 
-// 1. Signup Form Page
+    if (product) {
+      product.reviews.push({
+        userName: req.session.user?.name || 'Customer',
+        rating: Number(rating),
+        comment
+      });
+      const sum = product.reviews.reduce((acc, item) => acc + item.rating, 0);
+      product.avgRating = sum / product.reviews.length;
+      await product.save();
+    }
+    res.redirect(`/product/${req.params.id}`);
+  } catch (err) {
+    res.redirect('back');
+  }
+});
+
+// ================= AUTHENTICATION & OTP ROUTES ================= //
+
+app.get('/login', (req, res) => {
+  res.render('login', { error: null });
+});
+
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Admin Credentials
+    if (email === 'test@gmail.com' && password === '123456') {
+      req.session.isAdmin = true;
+      req.session.user = { name: 'Admin', email: email, role: 'admin' };
+      return res.redirect('/admin/dashboard');
+    }
+
+    // Customer Credentials
+    const user = await User.findOne({ 
+      email: email.trim().toLowerCase(), 
+      password: password 
+    });
+
+    if (user) {
+      req.session.user = { id: user._id, name: user.name, email: user.email, role: user.role };
+      req.session.isAdmin = user.role === 'admin';
+      
+      if (user.role === 'admin') {
+        return res.redirect('/admin/dashboard');
+      }
+
+      const redirectUrl = req.session.returnTo || '/';
+      delete req.session.returnTo;
+      return res.redirect(redirectUrl);
+    }
+
+    res.render('login', { error: 'Galat Email ya Password!' });
+  } catch (err) {
+    res.render('login', { error: 'Login me dikkat aayi!' });
+  }
+});
+
+// Signup Page 1: Input Form
 app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
-// Step 1: User details collect karke OTP generate karein
+// Signup Step 1: Form Submit & OTP Generation
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.render('signup', { error: 'Sabhi fields bharna zaroori hai!' });
+      return res.render('signup', { error: 'Sabhi required fields bharein!' });
     }
 
     const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
@@ -192,10 +256,9 @@ app.post('/signup', async (req, res) => {
       return res.render('signup', { error: 'Yeh Email pehle se registered hai! Login karein.' });
     }
 
-    // 4-Digit Random OTP Generate karein
+    // 4-Digit Random Test OTP
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // Session mein store karein
     req.session.pendingSignup = {
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -204,21 +267,18 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Terminal me clearly display karein
     console.log(`\n==============================================`);
-    console.log(`🔑 APNA STORE SIGNUP OTP: [ ${generatedOtp} ]`);
-    console.log(`📩 Sent to: ${email}`);
+    console.log(`🔑 APNA STORE REGISTRATION OTP: [ ${generatedOtp} ]`);
+    console.log(`📩 Recipient: ${email}`);
     console.log(`==============================================\n`);
 
-    // OTP verification page par redirect karein
     res.redirect('/verify-otp');
-
   } catch (err) {
     res.render('signup', { error: 'Signup error: ' + err.message });
   }
 });
 
-// Step 2: OTP Page View
+// Signup Page 2: OTP Entry View
 app.get('/verify-otp', (req, res) => {
   if (!req.session.pendingSignup) {
     return res.redirect('/signup');
@@ -229,7 +289,7 @@ app.get('/verify-otp', (req, res) => {
   });
 });
 
-// Step 3: OTP Check & Database Save
+// Signup Step 2: OTP Verification & Database Insertion
 app.post('/verify-otp', async (req, res) => {
   try {
     const { otp } = req.body;
@@ -242,11 +302,10 @@ app.post('/verify-otp', async (req, res) => {
     if (!otp || otp.trim() !== pending.otp) {
       return res.render('verify-otp', {
         email: pending.email,
-        error: 'Galat OTP! Kripya terminal mein dekhkar sahi 4-digit OTP daalein.'
+        error: 'Galat OTP! Kripya console me dekhkar sahi 4-digit OTP daalein.'
       });
     }
 
-    // OTP Sahi hai -> Database mein Customer banayein
     const newUser = await User.create({
       name: pending.name,
       email: pending.email,
@@ -255,9 +314,8 @@ app.post('/verify-otp', async (req, res) => {
       role: 'customer'
     });
 
-    // Session Login
     req.session.user = { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role };
-    req.session.pendingSignup = null; // Clean temp session
+    req.session.pendingSignup = null;
 
     const redirectUrl = req.session.returnTo || '/';
     delete req.session.returnTo;
@@ -271,131 +329,15 @@ app.post('/verify-otp', async (req, res) => {
   }
 });
 
-// Login Page
-app.get('/login', (req, res) => {
-  res.render('login', { error: null });
-});
-
-app.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (email === 'test@gmail.com' && password === '123456') {
-      req.session.isAdmin = true;
-      req.session.user = { name: 'Admin', email: email, role: 'admin' };
-      const redirectUrl = req.session.returnTo || '/';
-      delete req.session.returnTo;
-      return res.redirect(redirectUrl);
-    }
-
-    const user = await User.findOne({ 
-      email: email.trim().toLowerCase(), 
-      password: password 
-    });
-
-    if (user) {
-      req.session.user = { id: user._id, name: user.name, email: user.email, role: user.role };
-      req.session.isAdmin = user.role === 'admin';
-      const redirectUrl = req.session.returnTo || '/';
-      delete req.session.returnTo;
-      return res.redirect(redirectUrl);
-    }
-
-    res.render('login', { error: 'Galat Email ya Password!' });
-  } catch (err) {
-    res.render('login', { error: 'Login me dikkat aayi!' });
-  }
-});
-
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/');
   });
 });
 
-// Direct Robust Signup (Bina OTP issue ke seedha account create & auto login)
-app.post('/signup', async (req, res) => {
-  try {
-    const { name, email, phone, password } = req.body;
+// ================= CART & CHECKOUT ROUTES ================= //
 
-    if (!name || !email || !password) {
-      return res.render('signup', { error: 'Sabhi fields bharna zaroori hai!' });
-    }
-
-    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
-    if (existingUser) {
-      return res.render('signup', { error: 'Yeh Email pehle se registered hai! Kripya Login karein.' });
-    }
-
-    const newUser = await User.create({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone ? phone.trim() : '',
-      password: password,
-      role: 'customer'
-    });
-
-    // Auto login session create karein
-    req.session.user = { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role };
-
-    const redirectUrl = req.session.returnTo || '/';
-    delete req.session.returnTo;
-    res.redirect(redirectUrl);
-
-  } catch (err) {
-    console.error('Signup Error:', err);
-    res.render('signup', { error: 'Signup me error: ' + err.message });
-  }
-});
-
-app.get('/login', (req, res) => {
-  res.render('login', { error: null });
-});
-
-app.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // 1. Admin login check
-    if (email === 'test@gmail.com' && password === '123456') {
-      req.session.isAdmin = true;
-      req.session.user = { name: 'Admin', email: email, role: 'admin' };
-      const redirectUrl = req.session.returnTo || '/';
-      delete req.session.returnTo;
-      return res.redirect(redirectUrl);
-    }
-
-    // 2. Customer login check
-    const user = await User.findOne({ 
-      email: email.trim().toLowerCase(), 
-      password: password 
-    });
-
-    if (user) {
-      req.session.user = { id: user._id, name: user.name, email: user.email, role: user.role };
-      req.session.isAdmin = user.role === 'admin';
-      const redirectUrl = req.session.returnTo || '/';
-      delete req.session.returnTo;
-      return res.redirect(redirectUrl);
-    }
-
-    res.render('login', { error: 'Galat Email ya Password!' });
-  } catch (err) {
-    res.render('login', { error: 'Login me dikkat aayi!' });
-  }
-});
-
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/');
-  });
-});
-
-app.get('/admin/login', (req, res) => res.redirect('/login'));
-app.post('/admin/login', (req, res) => res.redirect(307, '/login'));
-app.get('/admin/logout', (req, res) => res.redirect('/logout'));
-
-// 4. Cart Operations (LOCKED: Sirf Login users ke liye)
+// Cart Add (Login Required)
 app.post('/cart/add', requireLogin, async (req, res) => {
   try {
     const { productId, selectedSize } = req.body;
@@ -453,13 +395,14 @@ app.post('/cart/remove', (req, res) => {
   res.redirect('/cart');
 });
 
-// 5. Checkout & Razorpay (LOCKED: Sirf Login users ke liye)
+// Checkout View (Login Required)
 app.get('/checkout', requireLogin, (req, res) => {
   const cart = req.session.cart;
   if (!cart || cart.items.length === 0) return res.redirect('/cart');
   res.render('checkout', { cart });
 });
 
+// Razorpay Order Creation API
 app.post('/create-razorpay-order', requireLogin, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -480,6 +423,7 @@ app.post('/create-razorpay-order', requireLogin, async (req, res) => {
   }
 });
 
+// Verify Payment & Save Customer Order
 app.post('/verify-payment', requireLogin, async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, customerName, phone, address } = req.body;
@@ -506,7 +450,7 @@ app.post('/verify-payment', requireLogin, async (req, res) => {
       razorpayPaymentId
     });
 
-    req.session.cart = null;
+    req.session.cart = null; // Reset cart on successful order
     res.json({ success: true });
   } catch (err) {
     console.error('Verify Payment Error:', err);
@@ -524,7 +468,40 @@ app.get('/order-success', (req, res) => {
   `);
 });
 
-// 6. Admin Routes
+// ================= DEDICATED ADMIN CONTROL CENTER ================= //
+
+// 1. Central Admin Dashboard (Review All Products, Orders & Revenue)
+app.get('/admin/dashboard', checkAdmin, async (req, res) => {
+  try {
+    const products = await Product.find().sort({ createdAt: -1 });
+    const orders = await Order.find().sort({ createdAt: -1 });
+
+    const totalRevenue = orders.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+
+    res.render('admin-dashboard', {
+      products,
+      orders,
+      totalRevenue,
+      productCount: products.length,
+      orderCount: orders.length
+    });
+  } catch (err) {
+    res.redirect('/');
+  }
+});
+
+// 2. Order Status Update (Action on received order)
+app.post('/admin/order/:id/status', checkAdmin, async (req, res) => {
+  try {
+    const { orderStatus } = req.body;
+    await Order.findByIdAndUpdate(req.params.id, { paymentStatus: orderStatus });
+    res.redirect('/admin/dashboard');
+  } catch (err) {
+    res.redirect('/admin/dashboard');
+  }
+});
+
+// 3. Add Product
 app.get('/admin/add-product', checkAdmin, (req, res) => {
   res.render('add-product');
 });
@@ -547,19 +524,20 @@ app.post('/admin/add-product', checkAdmin, async (req, res) => {
       description
     });
 
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   } catch (err) {
     res.redirect('/admin/add-product');
   }
 });
 
+// 4. Edit Product
 app.get('/admin/edit-product/:id', checkAdmin, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) return res.redirect('/');
+    if (!product) return res.redirect('/admin/dashboard');
     res.render('edit-product', { product });
   } catch (err) {
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   }
 });
 
@@ -581,30 +559,29 @@ app.post('/admin/edit-product/:id', checkAdmin, async (req, res) => {
       description
     });
 
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   } catch (err) {
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   }
 });
 
+// 5. Delete Product
 app.post('/admin/delete-product/:id', checkAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   } catch (err) {
-    res.redirect('/');
+    res.redirect('/admin/dashboard');
   }
 });
 
-app.get('/admin/orders', checkAdmin, async (req, res) => {
-  try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    res.render('orders', { orders });
-  } catch (err) {
-    res.redirect('/');
-  }
-});
+// Backward compatibility routes
+app.get('/admin/login', (req, res) => res.redirect('/login'));
+app.post('/admin/login', (req, res) => res.redirect(307, '/login'));
+app.get('/admin/logout', (req, res) => res.redirect('/logout'));
+app.get('/admin/orders', checkAdmin, (req, res) => res.redirect('/admin/dashboard'));
 
+// Server Launch
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server live hai: http://localhost:${PORT}`);

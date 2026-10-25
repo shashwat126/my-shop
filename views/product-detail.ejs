@@ -323,7 +323,17 @@
     <section class="info-section">
       <span class="product-badge"><%= product.category %> Wear</span>
       <h1 class="product-title"><%= product.title %></h1>
-
+<% if (isAdmin) { %>
+  <!-- Admin Quick Actions Bar -->
+  <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0; background: #fef2f2; border: 1px solid #fee2e2; padding: 10px 14px; border-radius: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: #991b1b;">Admin Panel:</span>
+    <a href="/admin/edit-product/<%= product._id %>" style="background: #2563eb; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;">✏️ Edit Product</a>
+    
+    <form action="/admin/delete-product/<%= product._id %>" method="POST" onsubmit="return confirm('Kya aap sach me is product ko delete karna chahte hain?');" style="margin: 0;">
+      <button type="submit" style="background: #dc2626; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">🗑️ Delete</button>
+    </form>
+  </div>
+<% } %>
       <div class="rating-badge">
         ★ <%= (product.avgRating || 4.2).toFixed(1) %> | <%= product.reviews ? product.reviews.length : 12 %> Ratings
       </div>

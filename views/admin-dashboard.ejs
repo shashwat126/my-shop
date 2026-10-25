@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Apna Store</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f8fafc; color: #0f172a; padding: 24px; }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 30px; }
+    .stat-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .stat-card h4 { font-size: 13px; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-card .val { font-size: 26px; font-weight: 700; color: #1e3a8a; }
+    
+    .section-title { font-size: 20px; font-weight: 700; margin: 30px 0 16px; display: flex; justify-content: space-between; align-items: center; }
+    .btn-add { background: #2563eb; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; }
+
+    /* Tables */
+    .table-container { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow-x: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { background: #f1f5f9; padding: 14px; font-weight: 600; color: #475569; }
+    td { padding: 14px; border-top: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:hover { background: #f8fafc; }
+
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-paid { background: #dcfce7; color: #166534; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    
+    .btn-edit { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px; }
+    .btn-delete { background: #fee2e2; color: #b91c1c; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+    
+    select.status-select { padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-header">
+    <div>
+      <h2>⚡ Admin Control Center</h2>
+      <p style="color: #64748b; font-size: 14px;">Product inventory, order tracking aur payment status manage karein</p>
+    </div>
+    <div>
+      <a href="/" style="margin-right: 12px; text-decoration: none; color: #475569; font-weight: 600;">View Store ↗</a>
+      <a href="/logout" style="color: #ef4444; text-decoration: none; font-weight: 600;">Logout</a>
+    </div>
+  </div>
+
+  <!-- Analytics Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <h4>Total Revenue</h4>
+      <div class="val" style="color: #16a34a;">₹<%= totalRevenue %></div>
+    </div>
+    <div class="stat-card">
+      <h4>Total Orders</h4>
+      <div class="val"><%= orderCount %></div>
+    </div>
+    <div class="stat-card">
+      <h4>Active Products</h4>
+      <div class="val"><%= productCount %></div>
+    </div>
+  </div>
+
+  <!-- Section 1: Orders & Payment Status -->
+  <div class="section-title">
+    <span>📦 Customer Orders & Payments</span>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Order Date</th>
+          <th>Customer Info</th>
+          <th>Items Ordered</th>
+          <th>Total Amount</th>
+          <th>Payment / Status</th>
+          <th>Update Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (orders.length === 0) { %>
+          <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 24px;">Abhi tak koi order receive nahi hua hai.</td></tr>
+        <% } %>
+        <% orders.forEach(o => { %>
+          <tr>
+            <td><%= new Date(o.createdAt).toLocaleDateString('en-IN') %></td>
+            <td>
+              <strong><%= o.customerName %></strong><br>
+              <span style="color: #64748b; font-size: 12px;"><%= o.phone %></span><br>
+              <span style="color: #64748b; font-size: 12px;"><%= o.address %></span>
+            </td>
+            <td>
+              <% o.items.forEach(it => { %>
+                <div>• <%= it.title %> (Size: <%= it.size || 'Std' %>) x <%= it.quantity %></div>
+              <% }) %>
+            </td>
+            <td><strong>₹<%= o.totalAmount %></strong></td>
+            <td>
+              <span class="badge <%= (o.paymentStatus === 'Paid' || o.paymentStatus === 'Delivered') ? 'badge-paid' : 'badge-pending' %>">
+                <%= o.paymentStatus || 'Pending' %>
+              </span>
+            </td>
+            <td>
+              <form action="/admin/order/<%= o._id %>/status" method="POST" style="display: flex; gap: 6px;">
+                <select name="orderStatus" class="status-select">
+                  <option value="Paid" <%= o.paymentStatus === 'Paid' ? 'selected' : '' %>>Paid</option>
+                  <option value="Shipped" <%= o.paymentStatus === 'Shipped' ? 'selected' : '' %>>Shipped</option>
+                  <option value="Delivered" <%= o.paymentStatus === 'Delivered' ? 'selected' : '' %>>Delivered</option>
+                  <option value="Pending" <%= o.paymentStatus === 'Pending' ? 'selected' : '' %>>Pending</option>
+                </select>
+                <button type="submit" style="padding: 6px 10px; background: #0f172a; color: white; border: none; border-radius: 6px; cursor: pointer;">Save</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 2: Manage Products (Edit / Delete) -->
+  <div class="section-title">
+    <span>👗 Products Inventory</span>
+    <a href="/admin/add-product" class="btn-add">+ Add New Product</a>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Image</th>
+          <th>Product Name & ID</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Rating / Reviews</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (products.length === 0) { %>
+          <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 24px;">Koi product nahi hai. Naya add karein!</td></tr>
+        <% } %>
+        <% products.forEach(p => { %>
+          <tr>
+            <td style="width: 70px;">
+              <img src="<%= (p.images && p.images.length > 0) ? p.images[0] : (p.imageUrl || 'https://via.placeholder.com/60') %>" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
+            </td>
+            <td>
+              <strong><%= p.title %></strong><br>
+              <span style="color: #64748b; font-size: 12px;">ID: <%= p.customId || p._id %></span>
+            </td>
+            <td style="text-transform: capitalize;"><%= p.category %></td>
+            <td><strong>₹<%= p.price %></strong> <% if(p.originalPrice) { %><span style="text-decoration: line-through; color: #94a3b8; font-size: 12px;">₹<%= p.originalPrice %></span><% } %></td>
+            <td>★ <%= (p.avgRating || 0).toFixed(1) %> (<%= p.reviews ? p.reviews.length : 0 %>)</td>
+            <td>
+              <div style="display: flex; gap: 8px;">
+                <a href="/admin/edit-product/<%= p._id %>" class="btn-edit">Edit</a>
+                <form action="/admin/delete-product/<%= p._id %>" method="POST" onsubmit="return confirm('Kya aap sach me ye product delete karna chahte hain?');">
+                  <button type="submit" class="btn-delete">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
