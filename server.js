@@ -2,11 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const Razorpay = require('razorpay');
-const brevo = require('@getbrevo/brevo');
 const path = require('path');
 const dns = require('dns');
 
-// DNS Fallback
+// DNS Fallback (IPv4 Priority)
 try {
   dns.setDefaultResultOrder('ipv4first');
   dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -14,25 +13,35 @@ try {
 
 const app = express();
 
-// --- Brevo HTTP API Configuration ---
-const apiInstance = new brevo.TransactionalEmailsApi();
-const apiKey = apiInstance.authentications['apiKey'];
-apiKey.apiKey = process.env.BREVO_API_KEY; // Koi secret hardcode nahi hai!
+// --- Brevo Direct HTTP API Setup (Native fetch, No SDK clash) ---
+const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
+const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
 
-
-// Helper function: Instant HTTP Email Dispatch via Brevo API
 async function sendBrevoEmail(toEmail, subject, htmlContent) {
-  const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = subject;
-  sendSmtpEmail.htmlContent = htmlContent;
-  sendSmtpEmail.sender = { name: "Apna Store Support", email: SENDER_EMAIL };
-  sendSmtpEmail.to = [{ email: toEmail }];
-
   try {
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log(`✉️ Brevo HTTP API Email dispatched successfully to: ${toEmail}`);
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: 'Apna Store Support', email: SENDER_EMAIL },
+        to: [{ email: toEmail }],
+        subject: subject,
+        htmlContent: htmlContent
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      console.log(`✉️ Brevo HTTP API Email dispatched successfully to: ${toEmail}`);
+    } else {
+      console.error('Brevo API Error:', data);
+    }
   } catch (err) {
-    console.error('Brevo API Error:', err.response ? err.response.text : err.message);
+    console.error('Email Dispatch Error:', err.message);
   }
 }
 
@@ -278,7 +287,7 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Brevo HTTP Call (Async background dispatch)
+    // Brevo HTTP Call (Instant async delivery)
     sendBrevoEmail(
       cleanEmail,
       'Your Apna Store Verification Code',
