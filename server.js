@@ -19,11 +19,17 @@ const app = express();
 const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // Port 465 ke liye true zaroori hai
   auth: {
     user: SENDER_EMAIL,
-    pass: 'dpsnszgeqxktcpsn' // Aapka generate kiya hua 16-digit App Password
-  }
+    pass: 'dpsnszgeqxktcpsn'
+  },
+  tls: {
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 10000 // 10 seconds me timeout taaki infinite buffering na ho
 });
 
 // Helper function: Live Signup OTP Email
