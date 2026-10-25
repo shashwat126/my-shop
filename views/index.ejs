@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Apna Store</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
+    header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 22px; }
+    header a { color: white; text-decoration: none; margin-left: 15px; font-weight: bold; }
+    .category-bar { background: white; padding: 12px 30px; display: flex; gap: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .category-bar a { text-decoration: none; color: #4b5563; font-weight: bold; padding: 6px 14px; border-radius: 20px; font-size: 14px; }
+    .category-bar a.active, .category-bar a:hover { background: #2563eb; color: white; }
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+    .product-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+    .product-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 230px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 15px; position: relative; }
+    .product-card img { width: 100%; height: 190px; object-fit: cover; }
+    .product-info { padding: 12px; flex-grow: 1; }
+    .badge-cat { font-size: 11px; text-transform: uppercase; background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #4b5563; }
+    .product-info h3 { margin: 8px 0; font-size: 17px; }
+    .price { font-size: 16px; font-weight: bold; color: #16a34a; margin: 0 0 10px 0; }
+    .btn-cart { background: #2563eb; color: white; text-align: center; padding: 10px; margin: 0 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; width: calc(100% - 24px); }
+    .btn-cart:hover { background: #1d4ed8; }
+    .admin-actions { display: flex; gap: 8px; margin: 10px 12px 0 12px; }
+    .admin-actions a { flex: 1; text-align: center; padding: 6px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; }
+    .btn-edit { background: #fef08a; color: #854d0e; }
+    .btn-del { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🛍️ Apna Store</h1>
+    <nav>
+      <a href="/cart">🛒 Cart (<%= cartCount %>)</a>
+      <% if (currentUser) { %>
+        <span style="margin-left: 15px;">Hi, <%= currentUser.name %></span>
+        <% if (currentUser.role === 'admin') { %>
+          <a href="/admin/add-product" style="color: #4ade80;">+ Add Product</a>
+          <a href="/admin/orders" style="color: #60a5fa;">📦 Orders</a>
+        <% } %>
+        <a href="/logout" style="color: #f87171;">Logout</a>
+      <% } else { %>
+        <a href="/login">Login</a>
+        <a href="/signup">Sign Up</a>
+      <% } %>
+    </nav>
+  </header>
+
+  <div class="category-bar">
+    <a href="/" class="<%= currentCategory === 'all' ? 'active' : '' %>">All Products</a>
+    <a href="/?category=men" class="<%= currentCategory === 'men' ? 'active' : '' %>">Men</a>
+    <a href="/?category=women" class="<%= currentCategory === 'women' ? 'active' : '' %>">Women</a>
+    <a href="/?category=kids" class="<%= currentCategory === 'kids' ? 'active' : '' %>">Kids</a>
+  </div>
+
+  <div class="container">
+    <h2><%= currentCategory.toUpperCase() %> COLLECTION</h2>
+    
+    <% if (products.length === 0) { %>
+      <p>Is category me abhi koi product nahi hai.</p>
+    <% } %>
+
+    <div class="product-grid">
+      <% products.forEach(product => { %>
+        <div class="product-card">
+          <!-- Card click se Detail Page khulega -->
+          <a href="/product/<%= product._id %>" style="text-decoration: none; color: inherit;">
+            <img src="<%= (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://via.placeholder.com/200') %>" alt="<%= product.title %>">
+            <div class="product-info">
+              <span class="badge-cat"><%= product.customId || 'PROD' %></span>
+              <h3><%= product.title %></h3>
+              <p class="price">₹<%= product.price %></p>
+              <p style="font-size: 12px; color: #e11d48; font-weight: bold; margin: 0;">⚡ Lowest Price | 7 Days Return</p>
+            </div>
+          </a>
+
+          <form action="/cart/add" method="POST">
+            <input type="hidden" name="productId" value="<%= product._id %>">
+            <button type="submit" class="btn-cart">Add to Cart</button>
+          </form>
+
+          <% if (currentUser && currentUser.role === 'admin') { %>
+            <div class="admin-actions">
+              <a href="/admin/edit-product/<%= product._id %>" class="btn-edit">Edit</a>
+              <a href="/admin/delete-product/<%= product._id %>" class="btn-del" onclick="return confirm('Kya aap is product ko delete karna chahte hain?')">Delete</a>
+            </div>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer Orders - Admin</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
+    header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+    header a { color: white; text-decoration: none; font-weight: bold; }
+    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #e5e7eb; font-size: 14px; }
+    .badge { background: #fef08a; color: #854d0e; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h2>📦 Received Orders</h2>
+    <a href="/">← Back to Store</a>
+  </header>
+
+  <div class="container">
+    <% if (orders.length === 0) { %>
+      <p>Abhi tak koi order nahi aaya hai.</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Product</th>
+            <th>Amount</th>
+            <th>Address</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(order => { %>
+            <tr>
+              <td><%= new Date(order.createdAt).toLocaleDateString() %></td>
+              <td><b><%= order.customerName %></b></td>
+              <td><%= order.phone %></td>
+              <td><%= order.productTitle %></td>
+              <td>₹<%= order.productPrice %></td>
+              <td><%= order.address %></td>
+              <td><span class="badge"><%= order.status %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+</body>
+</html>

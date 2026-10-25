@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Product - Store Admin</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f6f8; display: flex; justify-content: center; padding: 40px 0; margin: 0; }
+    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 440px; }
+    h2 { margin-top: 0; text-align: center; }
+    label { font-weight: bold; font-size: 13px; display: block; margin-top: 12px; }
+    input, textarea, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; background: #16a34a; color: white; padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Naya Product Add Karein</h2>
+    <form action="/admin/add-product" method="POST">
+      <label>Product ID (Unique)</label>
+      <input type="text" name="customId" placeholder="e.g. PROD-101" required>
+
+      <label>Product Ka Naam</label>
+      <input type="text" name="title" placeholder="Cotton Oversized T-Shirt" required>
+
+      <label>Category</label>
+      <select name="category" required>
+        <option value="men">Men</option>
+        <option value="women">Women</option>
+        <option value="kids">Kids</option>
+      </select>
+
+      <label>Selling Price (₹)</label>
+      <input type="number" name="price" placeholder="499" required>
+
+      <label>Original MRP (₹ - Strike through dikhane ke liye)</label>
+      <input type="number" name="originalPrice" placeholder="999">
+
+      <label>Photos URLs (Comma se separate karein)</label>
+      <textarea name="images" rows="3" placeholder="https://image1.jpg, https://image2.jpg, https://image3.jpg" required></textarea>
+
+      <label>Available Sizes (Comma se separate karein)</label>
+      <input type="text" name="sizes" placeholder="S, M, L, XL, XXL">
+
+      <label>Description</label>
+      <textarea name="description" rows="3" placeholder="Product details likhein..."></textarea>
+
+      <button type="submit">Save Product</button>
+    </form>
+  </div>
+
+</body>
+</html>
