@@ -2,11 +2,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const Razorpay = require('razorpay');
-const nodemailer = require('nodemailer');
+const brevo = require('@getbrevo/brevo');
 const path = require('path');
 const dns = require('dns');
 
-// DNS Fallback (IPv4 Priority)
+// DNS Fallback
 try {
   dns.setDefaultResultOrder('ipv4first');
   dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -14,27 +14,26 @@ try {
 
 const app = express();
 
-// --- Aapka Pehle Wala Working Gmail Nodemailer Setup ---
-const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
+// --- Brevo HTTP API Configuration ---
+const apiInstance = new brevo.TransactionalEmailsApi();
+const apiKey = apiInstance.authentications['apiKey'];
+apiKey.apiKey = process.env.BREVO_API_KEY; // Koi secret hardcode nahi hai!
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: SENDER_EMAIL,
-    pass: 'dpsnszgeqxktcpsn' // Aapka 16-digit App Password
+
+// Helper function: Instant HTTP Email Dispatch via Brevo API
+async function sendBrevoEmail(toEmail, subject, htmlContent) {
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = subject;
+  sendSmtpEmail.htmlContent = htmlContent;
+  sendSmtpEmail.sender = { name: "Apna Store Support", email: SENDER_EMAIL };
+  sendSmtpEmail.to = [{ email: toEmail }];
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✉️ Brevo HTTP API Email dispatched successfully to: ${toEmail}`);
+  } catch (err) {
+    console.error('Brevo API Error:', err.response ? err.response.text : err.message);
   }
-});
-
-// Helper function: Send OTP Email
-function sendMailAsync(toEmail, subject, htmlContent) {
-  transporter.sendMail({
-    from: `"Apna Store Support" <${SENDER_EMAIL}>`,
-    to: toEmail,
-    subject: subject,
-    html: htmlContent
-  })
-  .then(() => console.log(`✉️ Live OTP Email sent to: ${toEmail}`))
-  .catch(err => console.error('Nodemailer Error (fallback to console):', err.message));
 }
 
 // --- Schemas & Models ---
@@ -113,7 +112,7 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Global View Variables
+// Global Session Variables
 app.use((req, res, next) => {
   const currentCart = req.session.cart || { items: [], totalQty: 0, totalPrice: 0 };
   res.locals.cart = currentCart;
@@ -133,7 +132,7 @@ mongoose.connect(MONGO_URI, {
   .then(() => console.log('✅ MongoDB connected successfully!'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// --- Auth Protection Middlewares ---
+// --- Route Protectors ---
 const requireLogin = (req, res, next) => {
   if (req.session.user || req.session.isAdmin) return next();
   req.session.returnTo = req.originalUrl;
@@ -212,7 +211,7 @@ app.post('/product/:id/review', requireLogin, async (req, res) => {
   }
 });
 
-// ================= AUTHENTICATION & LIVE OTP ================= //
+// ================= AUTHENTICATION & BREVO API OTP ================= //
 
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
@@ -254,6 +253,7 @@ app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
+// Form Submit -> Brevo API Send
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -278,8 +278,8 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Live Email Send (Gmail Nodemailer)
-    sendMailAsync(
+    // Brevo HTTP Call (Async background dispatch)
+    sendBrevoEmail(
       cleanEmail,
       'Your Apna Store Verification Code',
       `
@@ -292,7 +292,7 @@ app.post('/signup', async (req, res) => {
               ${generatedOtp}
             </span>
           </div>
-          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes tak valid hai.</p>
+          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes tak valid hai. Kripya ise kisi ke sath share na karein.</p>
         </div>
       `
     );
@@ -376,8 +376,8 @@ app.post('/forgot-password', async (req, res) => {
       otp: resetOtp
     };
 
-    // Live Reset OTP via Nodemailer
-    sendMailAsync(
+    // Brevo HTTP Email Call
+    sendBrevoEmail(
       cleanEmail,
       'Password Reset OTP - Apna Store',
       `
@@ -440,7 +440,7 @@ app.post('/reset-password', async (req, res) => {
     res.redirect('/login');
   } catch (err) {
     res.render('reset-password', {
-      email: req.session.resetSession ? req.session.resetSession.email : '',
+      email: resetSess ? resetSess.email : '',
       error: 'Error: ' + err.message
     });
   }
@@ -678,8 +678,7 @@ app.post('/admin/delete-product/:id', checkAdmin, async (req, res) => {
   }
 });
 
-// Server Listen
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server live hai: http://localhost:${PORT}`);
+  console.log(`🚀 Server live: http://localhost:${PORT}`);
 });
