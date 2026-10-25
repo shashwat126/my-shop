@@ -17,6 +17,7 @@
     "express-session": "^1.19.0",
     "mongoose": "^9.11.4",
     "nodemailer": "^10.2.1",
-    "razorpay": "^2.9.8"
+    "razorpay": "^2.9.8",
+    "resend": "^6.34.1"
   }
 }

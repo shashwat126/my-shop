@@ -14,47 +14,27 @@ try {
 
 const app = express();
 
-// --- Live Email Transporter (Nodemailer) ---
+// --- Aapka Pehle Wala Working Gmail Nodemailer Setup ---
 const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  service: 'gmail',
   auth: {
     user: SENDER_EMAIL,
-    pass: 'dpsnszgeqxktcpsn'
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 5000 // 5 seconds max timeout
+    pass: 'dpsnszgeqxktcpsn' // Aapka 16-digit App Password
+  }
 });
 
-// Helper function: Live Signup OTP Email
-function sendOtpEmail(toEmail, otp) {
-  const mailOptions = {
+// Helper function: Send OTP Email
+function sendMailAsync(toEmail, subject, htmlContent) {
+  transporter.sendMail({
     from: `"Apna Store Support" <${SENDER_EMAIL}>`,
     to: toEmail,
-    subject: 'Your Apna Store Verification Code',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-        <h2 style="color: #1e3a8a; text-align: center; margin-bottom: 8px;">🛍️ Apna Store</h2>
-        <p style="font-size: 15px; color: #334155; margin-bottom: 20px;">Hello,</p>
-        <p style="font-size: 15px; color: #334155;">Apna Store par aapka account register karne ke liye OTP code neeche diya gaya hai:</p>
-        <div style="text-align: center; margin: 24px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #2563eb; background: #eff6ff; padding: 12px 24px; border-radius: 8px; border: 1px dashed #2563eb; display: inline-block;">
-            ${otp}
-          </span>
-        </div>
-        <p style="font-size: 13px; color: #64748b; line-height: 1.5;">Yeh OTP agle 10 minutes tak valid hai. Kripya ise kisi ke sath share na karein.</p>
-        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Apna Store • Secure Shopping</p>
-      </div>
-    `
-  };
-
-  return transporter.sendMail(mailOptions);
+    subject: subject,
+    html: htmlContent
+  })
+  .then(() => console.log(`✉️ Live OTP Email sent to: ${toEmail}`))
+  .catch(err => console.error('Nodemailer Error (fallback to console):', err.message));
 }
 
 // --- Schemas & Models ---
@@ -167,7 +147,6 @@ const checkAdmin = (req, res, next) => {
 
 // ================= PUBLIC ROUTES ================= //
 
-// Home Page
 app.get('/', async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -196,7 +175,6 @@ app.get('/', async (req, res) => {
   }
 });
 
-// Product Detail Page
 app.get('/product/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -213,7 +191,6 @@ app.get('/product/:id', async (req, res) => {
   }
 });
 
-// Product Review Submit
 app.post('/product/:id/review', requireLogin, async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -245,7 +222,6 @@ app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Admin Credentials
     if (email === 'test@gmail.com' && password === '123456') {
       req.session.isAdmin = true;
       req.session.user = { name: 'Admin', email: email, role: 'admin' };
@@ -278,7 +254,6 @@ app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
-// Step 1: Form Submit -> Instant Redirect & Background Email
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -303,10 +278,24 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Background Email Send (No await -> No Page Buffering)
-    sendOtpEmail(cleanEmail, generatedOtp)
-      .then(() => console.log(`✉️ Live OTP dispatched to: ${cleanEmail}`))
-      .catch(mailErr => console.error('Nodemailer Error (fallback to console):', mailErr.message));
+    // Live Email Send (Gmail Nodemailer)
+    sendMailAsync(
+      cleanEmail,
+      'Your Apna Store Verification Code',
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <h2 style="color: #1e3a8a; text-align: center; margin-bottom: 8px;">🛍️ Apna Store</h2>
+          <p style="font-size: 15px; color: #334155;">Hello ${name},</p>
+          <p style="font-size: 15px; color: #334155;">Apna Store par account verify karne ke liye OTP code neeche diya gaya hai:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #2563eb; background: #eff6ff; padding: 12px 24px; border-radius: 8px; border: 1px dashed #2563eb; display: inline-block;">
+              ${generatedOtp}
+            </span>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes tak valid hai.</p>
+        </div>
+      `
+    );
 
     console.log(`\n==============================================`);
     console.log(`🔑 APNA STORE REGISTRATION OTP: [ ${generatedOtp} ]`);
@@ -319,7 +308,6 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Step 2: OTP Entry View
 app.get('/verify-otp', (req, res) => {
   if (!req.session.pendingSignup) return res.redirect('/signup');
   res.render('verify-otp', { 
@@ -328,7 +316,6 @@ app.get('/verify-otp', (req, res) => {
   });
 });
 
-// Step 3: Verify OTP & Insert Account
 app.post('/verify-otp', async (req, res) => {
   try {
     const { otp } = req.body;
@@ -372,7 +359,6 @@ app.get('/forgot-password', (req, res) => {
   res.render('forgot-password', { error: null });
 });
 
-// Step 1: Submit Email -> Instant Redirect & Background Email
 app.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -390,12 +376,11 @@ app.post('/forgot-password', async (req, res) => {
       otp: resetOtp
     };
 
-    // Background Email Send (No await -> No Page Buffering)
-    transporter.sendMail({
-      from: `"Apna Store Support" <${SENDER_EMAIL}>`,
-      to: cleanEmail,
-      subject: 'Password Reset OTP - Apna Store',
-      html: `
+    // Live Reset OTP via Nodemailer
+    sendMailAsync(
+      cleanEmail,
+      'Password Reset OTP - Apna Store',
+      `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
           <h2 style="color: #1e3a8a; text-align: center;">🛍️ Apna Store</h2>
           <p style="font-size: 15px; color: #334155;">Hello,</p>
@@ -405,12 +390,10 @@ app.post('/forgot-password', async (req, res) => {
               ${resetOtp}
             </span>
           </div>
-          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes ke liye valid hai.</p>
+          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes tak valid hai.</p>
         </div>
       `
-    })
-      .then(() => console.log(`✉️ Password reset OTP sent to: ${cleanEmail}`))
-      .catch(err => console.error('Nodemailer Error (fallback to console):', err.message));
+    );
 
     console.log(`🔑 Backup Reset OTP: [ ${resetOtp} ]`);
     res.redirect('/reset-password');
