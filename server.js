@@ -15,13 +15,12 @@ try {
 const app = express();
 
 // --- Live Email Transporter (Nodemailer) ---
-// 👇 APNA REAL GMAIL ID YAHAN DALEIN:
 const SENDER_EMAIL = 'shashwatsaini13082003@gmail.com'; 
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
-  secure: true, // Port 465 ke liye true zaroori hai
+  secure: true,
   auth: {
     user: SENDER_EMAIL,
     pass: 'dpsnszgeqxktcpsn'
@@ -29,11 +28,11 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false
   },
-  connectionTimeout: 10000 // 10 seconds me timeout taaki infinite buffering na ho
+  connectionTimeout: 5000 // 5 seconds max timeout
 });
 
 // Helper function: Live Signup OTP Email
-async function sendOtpEmail(toEmail, otp) {
+function sendOtpEmail(toEmail, otp) {
   const mailOptions = {
     from: `"Apna Store Support" <${SENDER_EMAIL}>`,
     to: toEmail,
@@ -197,7 +196,7 @@ app.get('/', async (req, res) => {
   }
 });
 
-// Product Detail Page (Public View)
+// Product Detail Page
 app.get('/product/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -275,12 +274,11 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Signup Form
 app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
-// Step 1: Form Submit -> Generate & Send Real Email OTP
+// Step 1: Form Submit -> Instant Redirect & Background Email
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -305,13 +303,10 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Live Email Send
-    try {
-      await sendOtpEmail(cleanEmail, generatedOtp);
-      console.log(`✉️ Live OTP Email dispatched to: ${cleanEmail}`);
-    } catch (mailErr) {
-      console.error('Nodemailer Error:', mailErr.message);
-    }
+    // Background Email Send (No await -> No Page Buffering)
+    sendOtpEmail(cleanEmail, generatedOtp)
+      .then(() => console.log(`✉️ Live OTP dispatched to: ${cleanEmail}`))
+      .catch(mailErr => console.error('Nodemailer Error (fallback to console):', mailErr.message));
 
     console.log(`\n==============================================`);
     console.log(`🔑 APNA STORE REGISTRATION OTP: [ ${generatedOtp} ]`);
@@ -344,7 +339,7 @@ app.post('/verify-otp', async (req, res) => {
     if (!otp || otp.trim() !== pending.otp) {
       return res.render('verify-otp', {
         email: pending.email,
-        error: 'Galat OTP! Kripya apna email check karke sahi 4-digit code dalein.'
+        error: 'Galat OTP! Kripya sahi 4-digit code dalein.'
       });
     }
 
@@ -377,6 +372,7 @@ app.get('/forgot-password', (req, res) => {
   res.render('forgot-password', { error: null });
 });
 
+// Step 1: Submit Email -> Instant Redirect & Background Email
 app.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -394,29 +390,27 @@ app.post('/forgot-password', async (req, res) => {
       otp: resetOtp
     };
 
-    try {
-      await transporter.sendMail({
-        from: `"Apna Store Support" <${SENDER_EMAIL}>`,
-        to: cleanEmail,
-        subject: 'Password Reset OTP - Apna Store',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-            <h2 style="color: #1e3a8a; text-align: center;">🛍️ Apna Store</h2>
-            <p style="font-size: 15px; color: #334155;">Hello,</p>
-            <p style="font-size: 15px; color: #334155;">Apna password reset karne ke liye OTP code neeche diya gaya hai:</p>
-            <div style="text-align: center; margin: 24px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #dc2626; background: #fef2f2; padding: 12px 24px; border-radius: 8px; border: 1px dashed #dc2626; display: inline-block;">
-                ${resetOtp}
-              </span>
-            </div>
-            <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes ke liye valid hai. Kisi ke sath share na karein.</p>
+    // Background Email Send (No await -> No Page Buffering)
+    transporter.sendMail({
+      from: `"Apna Store Support" <${SENDER_EMAIL}>`,
+      to: cleanEmail,
+      subject: 'Password Reset OTP - Apna Store',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <h2 style="color: #1e3a8a; text-align: center;">🛍️ Apna Store</h2>
+          <p style="font-size: 15px; color: #334155;">Hello,</p>
+          <p style="font-size: 15px; color: #334155;">Apna password reset karne ke liye OTP code neeche diya gaya hai:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 10px; color: #dc2626; background: #fef2f2; padding: 12px 24px; border-radius: 8px; border: 1px dashed #dc2626; display: inline-block;">
+              ${resetOtp}
+            </span>
           </div>
-        `
-      });
-      console.log(`✉️ Password reset OTP dispatched to: ${cleanEmail}`);
-    } catch (err) {
-      console.error('Nodemailer Error:', err.message);
-    }
+          <p style="font-size: 13px; color: #64748b;">Yeh code agle 10 minutes ke liye valid hai.</p>
+        </div>
+      `
+    })
+      .then(() => console.log(`✉️ Password reset OTP sent to: ${cleanEmail}`))
+      .catch(err => console.error('Nodemailer Error (fallback to console):', err.message));
 
     console.log(`🔑 Backup Reset OTP: [ ${resetOtp} ]`);
     res.redirect('/reset-password');
@@ -443,7 +437,7 @@ app.post('/reset-password', async (req, res) => {
     if (!otp || otp.trim() !== resetSess.otp) {
       return res.render('reset-password', {
         email: resetSess.email,
-        error: 'Galat OTP! Kripya apna email check karke sahi 4-digit code dalein.'
+        error: 'Galat OTP! Kripya sahi 4-digit code dalein.'
       });
     }
 
