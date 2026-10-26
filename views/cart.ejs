@@ -2,70 +2,287 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shopping Cart - Apna Store</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; background-color: #f4f6f8; }
-    header { background: #1f2937; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-    header a { color: white; text-decoration: none; font-weight: bold; }
-    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
-    th, td { padding: 14px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #e5e7eb; font-size: 14px; }
-    .cart-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 10px; }
-    .total-box { background: white; padding: 20px; border-radius: 8px; text-align: right; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .btn-checkout { background: #16a34a; color: white; padding: 12px 24px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block; font-weight: bold; margin-top: 10px; }
-    .btn-remove { color: #dc2626; text-decoration: none; font-size: 14px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Bag | Apna Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col pb-24 lg:pb-10">
 
-  <header>
-    <h2>🛒 Your Cart</h2>
-    <a href="/">← Continue Shopping</a>
-  </header>
+  <!-- Responsive Top Navbar -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-slate-200/80">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold text-blue-700 tracking-tight">
+        <i class="fa-solid fa-bag-shopping text-blue-600"></i> Apna Store
+      </a>
 
-  <div class="container">
-    <% if (!cart || cart.items.length === 0) { %>
-      <div style="background: white; padding: 40px; text-align: center; border-radius: 8px;">
-        <h3>Aapka cart khali hai!</h3>
-        <p>Products dekhne ke liye store par wapis jayein.</p>
-        <a href="/" style="color: #2563eb; font-weight: bold; text-decoration: none;">Store par jayein</a>
+      <div class="hidden md:flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+        <span class="text-blue-600 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> 1. Bag</span>
+        <span>━━━</span>
+        <span>2. Address</span>
+        <span>━━━</span>
+        <span>3. Payment</span>
+      </div>
+
+      <a href="/" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl transition flex items-center gap-1.5">
+        <i class="fa-solid fa-arrow-left"></i> <span>Continue Shopping</span>
+      </a>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-grow w-full">
+
+    <% if (!cart || !cart.items || cart.items.length === 0) { %>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-8 sm:p-12 text-center max-w-md mx-auto my-6">
+        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl sm:text-4xl">
+          <i class="fa-solid fa-cart-plus"></i>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2">Aapka Shopping Bag Khali Hai!</h2>
+        <p class="text-slate-500 text-xs sm:text-sm mb-6">Apni pasand ke products select karein aur unhe bag mein add karein.</p>
+        <a href="/" class="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-md transition">
+          <i class="fa-solid fa-bolt"></i> Explore Products
+        </a>
       </div>
     <% } else { %>
-      <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Price</th>
-            <th>Quantity</th>
-            <th>Subtotal</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% cart.items.forEach(item => { %>
-            <tr>
-              <td>
-                <img src="<%= item.imageUrl %>" class="cart-img" alt="<%= item.title %>">
-                <b><%= item.title %></b>
-              </td>
-              <td>₹<%= item.price %></td>
-              <td><%= item.quantity %></td>
-              <td>₹<%= item.price * item.quantity %></td>
-              <td>
-                <a href="/cart/remove/<%= item.productId %>" class="btn-remove">Remove</a>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
 
-      <div class="total-box">
-        <h3>Total Bill: ₹<%= cart.totalPrice %></h3>
-        <a href="/checkout" class="btn-checkout">Proceed to Checkout (COD)</a>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+          My Shopping Bag <span class="text-sm sm:text-base font-semibold text-slate-500">(<%= cart.totalQty %> Items)</span>
+        </h1>
+        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+          <i class="fa-solid fa-truck-fast mr-1"></i> Free Delivery Unlocked
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+
+        <!-- Left Column: Detailed Product Cards -->
+        <div class="lg:col-span-2 space-y-4">
+          <% cart.items.forEach((item, index) => { %>
+            <% const origPrice = item.originalPrice || item.price; %>
+            <% const discountPct = origPrice > item.price ? Math.round(((origPrice - item.price) / origPrice) * 100) : 0; %>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-3.5 sm:p-5 hover:shadow-md transition">
+              <div class="flex gap-3.5 sm:gap-5">
+                
+                <!-- Product Image -->
+                <a href="/product/<%= item.productId %>" class="w-24 h-32 sm:w-32 sm:h-40 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 relative group">
+                  <img src="<%= item.imageUrl || 'https://via.placeholder.com/150' %>" alt="<%= item.title %>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                  <% if (discountPct > 0) { %>
+                    <span class="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                      <%= discountPct %>% OFF
+                    </span>
+                  <% } %>
+                </a>
+
+                <!-- Complete Product Details -->
+                <div class="flex-grow min-w-0 flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md">
+                          <%= item.category || 'Fashion' %>
+                        </span>
+                        <% if (item.customId) { %>
+                          <span class="text-[11px] text-slate-400 font-medium">Code: #<%= item.customId %></span>
+                        <% } %>
+                      </div>
+
+                      <a href="/cart/remove/<%= index %>" class="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition flex items-center gap-1 text-xs font-semibold" title="Remove from Bag">
+                        <i class="fa-regular fa-trash-can text-sm"></i>
+                        <span class="hidden sm:inline">Remove</span>
+                      </a>
+                    </div>
+
+                    <a href="/product/<%= item.productId %>" class="block text-base sm:text-lg font-extrabold text-slate-900 hover:text-blue-600 mt-1 truncate">
+                      <%= item.title %>
+                    </a>
+
+                    <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                      <%= item.description || 'Premium quality fabric & verified genuine product from Apna Store.' %>
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-2 mt-2.5">
+                      <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-200">
+                        Size: <%= item.size || 'Standard' %>
+                      </span>
+                      <span class="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                        <i class="fa-solid fa-circle-check text-[10px]"></i> In Stock
+                      </span>
+                      <a href="/product/<%= item.productId %>" class="text-xs font-bold text-blue-600 hover:underline ml-auto">
+                        View Full Details <i class="fa-solid fa-angle-right text-[10px]"></i>
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Bottom Row: Quantity Controls & Actual MRP Price -->
+                  <div class="flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-slate-100">
+                    <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50">
+                      <form action="/cart/update" method="POST" class="inline">
+                        <input type="hidden" name="index" value="<%= index %>">
+                        <input type="hidden" name="action" value="decrease">
+                        <button type="submit" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 font-extrabold text-base transition">−</button>
+                      </form>
+                      <span class="px-3 sm:px-4 text-xs sm:text-sm font-extrabold text-slate-900 bg-white h-8 sm:h-9 flex items-center border-x border-slate-300">
+                        <%= item.quantity %>
+                      </span>
+                      <form action="/cart/update" method="POST" class="inline">
+                        <input type="hidden" name="index" value="<%= index %>">
+                        <input type="hidden" name="action" value="increase">
+                        <button type="submit" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 font-extrabold text-base transition">+</button>
+                      </form>
+                    </div>
+
+                    <div class="text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <% if (origPrice > item.price) { %>
+                          <del class="text-xs sm:text-sm text-slate-400">₹<%= origPrice * item.quantity %></del>
+                        <% } %>
+                        <span class="text-base sm:text-xl font-extrabold text-slate-900">₹<%= item.price * item.quantity %></span>
+                      </div>
+                      <% if (discountPct > 0) { %>
+                        <p class="text-[11px] font-bold text-emerald-600">You save ₹<%= (origPrice - item.price) * item.quantity %> (<%= discountPct %>% OFF)</p>
+                      <% } %>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+
+        <!-- Right Column: Exact Order Summary Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-6 lg:sticky lg:top-24">
+          <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider pb-3.5 border-b border-slate-100">
+            Order Summary (<%= cart.totalQty %> Items)
+          </h3>
+
+          <% 
+            let totalMrp = 0;
+            cart.items.forEach(i => {
+              totalMrp += ((i.originalPrice || i.price) * i.quantity);
+            });
+            const totalSaving = totalMrp - cart.totalPrice; 
+          %>
+
+          <div class="space-y-3 py-4 text-sm border-b border-slate-100">
+            <div class="flex justify-between text-slate-600">
+              <span>Total MRP</span>
+              <span class="font-semibold text-slate-800">₹<%= totalMrp %></span>
+            </div>
+            <div class="flex justify-between text-emerald-600">
+              <span>Discount on MRP</span>
+              <span class="font-bold">− ₹<%= totalSaving %></span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Delivery Charges</span>
+              <span><del class="text-slate-400 mr-1">₹79</del> <strong class="text-emerald-600">FREE</strong></span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center py-4 text-base sm:text-lg font-extrabold text-slate-900">
+            <span>Total Amount</span>
+            <span class="text-xl text-blue-700">₹<%= cart.totalPrice %></span>
+          </div>
+
+          <% if (totalSaving > 0) { %>
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl px-3 py-2.5 mb-4 text-center">
+              🎉 Aap is order par ₹<%= totalSaving %> bacha rahe hain!
+            </div>
+          <% } %>
+
+          <a href="/checkout" class="hidden lg:flex w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition items-center justify-center gap-2 text-base">
+            <span>Proceed to Checkout</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </a>
+
+          <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-500 font-semibold">
+            <div class="flex flex-col items-center gap-1">
+              <i class="fa-solid fa-shield-halved text-blue-600 text-base"></i>
+              <span>100% Secure</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <i class="fa-solid fa-rotate-left text-blue-600 text-base"></i>
+              <span>Easy Returns</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <i class="fa-solid fa-award text-blue-600 text-base"></i>
+              <span>Genuine</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mobile Sticky Bottom Checkout Bar -->
+      <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 shadow-2xl z-50 flex items-center justify-between gap-4">
+        <div>
+          <p class="text-[11px] text-slate-500 font-semibold uppercase">Total Payable</p>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-xl font-extrabold text-slate-900">₹<%= cart.totalPrice %></span>
+            <% if (totalMrp > cart.totalPrice) { %>
+              <del class="text-xs text-slate-400">₹<%= totalMrp %></del>
+            <% } %>
+          </div>
+        </div>
+        <a href="/checkout" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm">
+          <span>Place Order</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </div>
+
+    <% } %>
+
+    <!-- Suggested / More Products Section -->
+    <% if (typeof suggestedProducts !== 'undefined' && suggestedProducts.length > 0) { %>
+      <div class="mt-12 pt-8 border-t border-slate-200">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">🔥 Explore More Products</h2>
+            <p class="text-xs text-slate-500">Apne bag mein aur items add karein</p>
+          </div>
+          <a href="/" class="text-xs sm:text-sm font-bold text-blue-600 hover:underline">View All →</a>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-5">
+          <% suggestedProducts.forEach(prod => { %>
+            <% const img = (prod.images && prod.images.length > 0) ? prod.images[0] : prod.imageUrl; %>
+            <div class="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between group">
+              <a href="/product/<%= prod._id %>" class="block">
+                <div class="h-40 sm:h-48 bg-slate-100 overflow-hidden relative">
+                  <img src="<%= img %>" alt="<%= prod.title %>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                  <span class="absolute top-2 left-2 bg-white/90 text-slate-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded">
+                    <%= prod.category %>
+                  </span>
+                </div>
+                <div class="p-3">
+                  <h3 class="font-bold text-slate-800 text-xs sm:text-sm truncate group-hover:text-blue-600"><%= prod.title %></h3>
+                  <p class="text-[11px] text-slate-400 line-clamp-1 mt-0.5"><%= prod.description || 'Verified product' %></p>
+                  <div class="mt-2 flex items-baseline gap-1.5">
+                    <span class="font-extrabold text-slate-900 text-sm sm:text-base">₹<%= prod.price %></span>
+                    <% if (prod.originalPrice) { %>
+                      <del class="text-[11px] text-slate-400">₹<%= prod.originalPrice %></del>
+                    <% } %>
+                  </div>
+                </div>
+              </a>
+              <div class="px-3 pb-3">
+                <form action="/cart/add" method="POST">
+                  <input type="hidden" name="productId" value="<%= prod._id %>">
+                  <input type="hidden" name="selectedSize" value="<%= (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : 'Standard' %>">
+                  <button type="submit" class="w-full bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-plus"></i> Add to Bag
+                  </button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        </div>
       </div>
     <% } %>
-  </div>
+
+  </main>
 
 </body>
 </html>

@@ -45,6 +45,17 @@ async function sendBrevoEmail(toEmail, subject, htmlContent) {
   }
 }
 
+// Helper: Google Drive Share Link ko Direct Thumbnail Link mein auto-convert karein
+function formatImageUrl(url) {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const driveMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch && driveMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+  }
+  return trimmed;
+}
+
 // --- Schemas & Models ---
 const productSchema = new mongoose.Schema({
   customId: { type: String, unique: true },
@@ -141,10 +152,10 @@ mongoose.connect(MONGO_URI, {
   .then(() => console.log('✅ MongoDB connected successfully!'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// --- Route Protectors ---
+// --- Route Protectors (Both requireLogin & checkAdmin Included) ---
 const requireLogin = (req, res, next) => {
   if (req.session.user || req.session.isAdmin) return next();
-  req.session.returnTo = req.originalUrl;
+  req.session.returnTo = req.method === 'GET' ? req.originalUrl : (req.get('Referer') || '/');
   res.redirect('/login');
 };
 
@@ -183,15 +194,24 @@ app.get('/', async (req, res) => {
   }
 });
 
+// Smart Product Detail Route (Always loads related/other products below)
 app.get('/product/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.redirect('/');
 
-    const relatedProducts = await Product.find({
+    let relatedProducts = await Product.find({
       category: product.category,
       _id: { $ne: product._id }
     }).limit(4);
+
+    if (relatedProducts.length < 4) {
+      const existingIds = [product._id, ...relatedProducts.map(p => p._id)];
+      const moreProducts = await Product.find({
+        _id: { $nin: existingIds }
+      }).limit(4 - relatedProducts.length);
+      relatedProducts = [...relatedProducts, ...moreProducts];
+    }
 
     res.render('product-detail', { product, relatedProducts });
   } catch (err) {
@@ -262,7 +282,6 @@ app.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });
 
-// Form Submit -> Brevo API Send
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -287,7 +306,6 @@ app.post('/signup', async (req, res) => {
       otp: generatedOtp
     };
 
-    // Brevo HTTP Call (Instant async delivery)
     sendBrevoEmail(
       cleanEmail,
       'Your Apna Store Verification Code',
@@ -385,7 +403,6 @@ app.post('/forgot-password', async (req, res) => {
       otp: resetOtp
     };
 
-    // Brevo HTTP Email Call
     sendBrevoEmail(
       cleanEmail,
       'Password Reset OTP - Apna Store',
@@ -459,7 +476,18 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-// ================= CART & CHECKOUT ================= //
+// ================= CART & CHECKOUT (GET & POST SUPPORT + FULL DETAILS) ================= //
+
+function recalculateCart(cart) {
+  let qty = 0;
+  let price = 0;
+  cart.items.forEach(item => {
+    qty += item.quantity;
+    price += (item.price * item.quantity);
+  });
+  cart.totalQty = qty;
+  cart.totalPrice = price;
+}
 
 app.post('/cart/add', requireLogin, async (req, res) => {
   try {
@@ -473,8 +501,10 @@ app.post('/cart/add', requireLogin, async (req, res) => {
     }
 
     const cart = req.session.cart;
+    const sizeToUse = selectedSize || (product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'Standard');
+
     const itemIndex = cart.items.findIndex(
-      i => i.productId.toString() === productId && i.size === (selectedSize || 'Standard')
+      i => i.productId.toString() === productId && i.size === sizeToUse
     );
 
     const img = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || '');
@@ -484,37 +514,102 @@ app.post('/cart/add', requireLogin, async (req, res) => {
     } else {
       cart.items.push({
         productId: product._id,
+        customId: product.customId || '',
         title: product.title,
+        category: product.category || 'fashion',
+        description: product.description || 'Premium quality product from Apna Store.',
         price: product.price,
+        originalPrice: product.originalPrice || Math.round(product.price * 1.25),
         imageUrl: img,
-        size: selectedSize || 'Standard',
+        size: sizeToUse,
         quantity: 1
       });
     }
 
-    cart.totalQty += 1;
-    cart.totalPrice += product.price;
-
+    recalculateCart(cart);
     res.redirect('/cart');
   } catch (err) {
     res.redirect('/');
   }
 });
 
-app.get('/cart', (req, res) => {
-  res.render('cart', { cart: req.session.cart || { items: [], totalQty: 0, totalPrice: 0 } });
+app.get('/cart/add', (req, res) => {
+  res.redirect('/cart');
 });
 
-app.post('/cart/remove', (req, res) => {
-  const { index } = req.body;
+app.get('/cart', async (req, res) => {
+  try {
+    const cart = req.session.cart || { items: [], totalQty: 0, totalPrice: 0 };
+
+    for (let item of cart.items) {
+      if (!item.description || !item.category) {
+        const prod = await Product.findById(item.productId);
+        if (prod) {
+          item.description = prod.description || 'Premium quality product from Apna Store.';
+          item.category = prod.category || 'men';
+          item.customId = prod.customId || '';
+          item.originalPrice = prod.originalPrice || Math.round(prod.price * 1.25);
+        }
+      }
+    }
+
+    const suggestedProducts = await Product.find().sort({ createdAt: -1 }).limit(4);
+    res.render('cart', { cart, suggestedProducts });
+  } catch (err) {
+    res.render('cart', { 
+      cart: req.session.cart || { items: [], totalQty: 0, totalPrice: 0 },
+      suggestedProducts: [] 
+    });
+  }
+});
+
+app.post('/cart/update', (req, res) => {
+  const { index, action } = req.body;
   const cart = req.session.cart;
 
   if (cart && cart.items[index]) {
-    cart.totalQty -= cart.items[index].quantity;
-    cart.totalPrice -= (cart.items[index].price * cart.items[index].quantity);
-    cart.items.splice(index, 1);
+    if (action === 'increase') {
+      cart.items[index].quantity += 1;
+    } else if (action === 'decrease') {
+      cart.items[index].quantity -= 1;
+      if (cart.items[index].quantity <= 0) {
+        cart.items.splice(index, 1);
+      }
+    }
+    recalculateCart(cart);
   }
+  res.redirect('/cart');
+});
 
+app.post('/cart/remove', (req, res) => {
+  const { index, productId } = req.body;
+  const cart = req.session.cart;
+
+  if (cart && cart.items) {
+    if (index !== undefined && cart.items[index]) {
+      cart.items.splice(index, 1);
+    } else if (productId) {
+      cart.items = cart.items.filter(i => i.productId.toString() !== productId.toString());
+    }
+    recalculateCart(cart);
+  }
+  res.redirect('/cart');
+});
+
+app.get('/cart/remove/:id', (req, res) => {
+  const targetId = req.params.id;
+  const cart = req.session.cart;
+
+  if (cart && cart.items) {
+    if (!isNaN(targetId) && cart.items[Number(targetId)]) {
+      cart.items.splice(Number(targetId), 1);
+    } else {
+      cart.items = cart.items.filter(
+        i => i.productId?.toString() !== targetId && i._id?.toString() !== targetId
+      );
+    }
+    recalculateCart(cart);
+  }
   res.redirect('/cart');
 });
 
@@ -623,7 +718,7 @@ app.get('/admin/add-product', checkAdmin, (req, res) => res.render('add-product'
 app.post('/admin/add-product', checkAdmin, async (req, res) => {
   try {
     const { customId, title, category, price, originalPrice, images, sizes, description } = req.body;
-    const imgArray = images ? images.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const imgArray = images ? images.split(',').map(s => formatImageUrl(s)).filter(Boolean) : [];
     const sizeArray = sizes ? sizes.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     await Product.create({
@@ -657,7 +752,7 @@ app.get('/admin/edit-product/:id', checkAdmin, async (req, res) => {
 app.post('/admin/edit-product/:id', checkAdmin, async (req, res) => {
   try {
     const { customId, title, category, price, originalPrice, images, sizes, description } = req.body;
-    const imgArray = images ? images.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const imgArray = images ? images.split(',').map(s => formatImageUrl(s)).filter(Boolean) : [];
     const sizeArray = sizes ? sizes.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     await Product.findByIdAndUpdate(req.params.id, {

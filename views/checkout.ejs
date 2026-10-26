@@ -2,98 +2,372 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Checkout & Payment - Apna Store</title>
-  <style>
-    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
-    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 480px; }
-    label { font-weight: bold; font-size: 13px; display: block; margin-top: 14px; }
-    input, textarea { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    .pay-btn { width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-    .pay-btn:hover { background: #1d4ed8; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Checkout | Apna Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col pb-24 lg:pb-12">
 
-  <div class="card">
-    <h2 style="margin-top: 0;">Order & Payment</h2>
-    <p>Total Payable: <b style="color: #16a34a; font-size: 22px;">₹<%= cart.totalPrice %></b></p>
-    
-    <form id="orderForm">
-      <label>Full Name</label>
-      <input type="text" id="customerName" required placeholder="Aapka Naam">
+  <!-- Top Secure Navbar -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-slate-200/80">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold text-blue-700 tracking-tight">
+        <i class="fa-solid fa-bag-shopping text-blue-600"></i> Apna Store
+      </a>
 
-      <label>Mobile Number</label>
-      <input type="tel" id="phone" required placeholder="10 Digit Number">
+      <!-- Progress Steps -->
+      <div class="hidden md:flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+        <a href="/cart" class="text-emerald-600 flex items-center gap-1 hover:underline">
+          <i class="fa-solid fa-circle-check"></i> 1. Bag
+        </a>
+        <span class="text-blue-600">━━━</span>
+        <span class="text-blue-600 flex items-center gap-1">
+          <i class="fa-solid fa-location-dot"></i> 2. Address & Payment
+        </span>
+        <span>━━━</span>
+        <span>3. Done</span>
+      </div>
 
-      <label>Delivery Address</label>
-      <textarea id="address" rows="3" required placeholder="Full Address with Pincode"></textarea>
+      <a href="/cart" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl transition flex items-center gap-1.5">
+        <i class="fa-solid fa-arrow-left"></i> <span>Back to Bag</span>
+      </a>
+    </div>
+  </nav>
 
-      <button type="submit" class="pay-btn">Proceed to Pay (UPI / Cards / NetBanking)</button>
-    </form>
-  </div>
+  <% 
+    let totalMrp = 0;
+    if (cart && cart.items) {
+      cart.items.forEach(i => {
+        totalMrp += ((i.originalPrice || i.price) * i.quantity);
+      });
+    }
+    const totalSaving = totalMrp > cart.totalPrice ? (totalMrp - cart.totalPrice) : 0; 
+  %>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-grow w-full">
+
+    <div class="mb-5 sm:mb-6 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Order & Secure Payment</h1>
+        <p class="text-xs sm:text-sm text-slate-500">Apna delivery address bharein aur payment complete karein</p>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+        <i class="fa-solid fa-lock"></i> 100% SSL Encrypted Checkout
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+
+      <!-- Left Column: Shipping Address & Payment Form (7 Cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Step 1: Shipping Address Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-7">
+          <div class="flex items-center gap-3 pb-4 mb-5 border-b border-slate-100">
+            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-base">
+              <i class="fa-solid fa-truck-fast"></i>
+            </div>
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Delivery Address</h2>
+              <p class="text-xs text-slate-400">Jahan aap apna order receive karna chahte hain</p>
+            </div>
+          </div>
+
+          <form id="checkoutForm" class="space-y-4" onsubmit="event.preventDefault(); startPayment();">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Full Name -->
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Full Name <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <i class="fa-regular fa-user"></i>
+                  </span>
+                  <input 
+                    type="text" 
+                    id="customerName" 
+                    value="<%= typeof currentUser !== 'undefined' && currentUser ? currentUser.name : '' %>"
+                    placeholder="Aapka Poora Naam" 
+                    required
+                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium transition"
+                  >
+                </div>
+              </div>
+
+              <!-- Mobile Number -->
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Mobile Number <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs font-bold">
+                    +91
+                  </span>
+                  <input 
+                    type="tel" 
+                    id="phone" 
+                    pattern="[0-9]{10}"
+                    maxlength="10"
+                    placeholder="10 Digit Mobile Number" 
+                    required
+                    class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium transition"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Pincode -->
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Pincode <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <i class="fa-solid fa-map-pin"></i>
+                  </span>
+                  <input 
+                    type="text" 
+                    id="pincode" 
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    placeholder="6 Digit Pincode (e.g. 302001)" 
+                    required
+                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium transition"
+                  >
+                </div>
+              </div>
+
+              <!-- City / State -->
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  City / State <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <i class="fa-solid fa-city"></i>
+                  </span>
+                  <input 
+                    type="text" 
+                    id="city" 
+                    placeholder="e.g. Jaipur, Rajasthan" 
+                    required
+                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium transition"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Full Delivery Address -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                House No., Building, Street, Area <span class="text-red-500">*</span>
+              </label>
+              <textarea 
+                id="address" 
+                rows="3" 
+                placeholder="Flat / House No., Colony, Landmark..." 
+                required
+                class="w-full p-3.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium transition"
+              ></textarea>
+            </div>
+
+            <!-- Payment Gateway Info Box -->
+            <div class="pt-3">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                Payment Mode
+              </label>
+              <div class="border-2 border-blue-600 bg-blue-50/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <input type="radio" checked class="w-4 h-4 text-blue-600">
+                  <div>
+                    <p class="text-sm font-extrabold text-slate-900">Pay Online (UPI / Cards / NetBanking)</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Instant verification via Razorpay Secure Gateway</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 text-blue-700 text-xl">
+                  <i class="fa-solid fa-mobile-screen-button" title="UPI"></i>
+                  <i class="fa-regular fa-credit-card" title="Cards"></i>
+                  <i class="fa-solid fa-building-columns" title="NetBanking"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Desktop Submit Button -->
+            <div class="pt-3 hidden lg:block">
+              <button 
+                type="submit" 
+                id="payBtnDesktop"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 text-base"
+              >
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Proceed to Pay ₹<%= cart.totalPrice %> (UPI / Cards / NetBanking)</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Order Summary & Items List (5 Cols) -->
+      <div class="lg:col-span-5 space-y-5 lg:sticky lg:top-24">
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-6">
+          <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+            <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+              Order Summary (<%= cart.totalQty %> Items)
+            </h3>
+            <a href="/cart" class="text-xs font-bold text-blue-600 hover:underline">Edit Bag</a>
+          </div>
+
+          <!-- Compact Item Preview List -->
+          <div class="space-y-3 max-h-64 overflow-y-auto pr-1 border-b border-slate-100 pb-4">
+            <% cart.items.forEach(item => { %>
+              <div class="flex items-center gap-3">
+                <img src="<%= item.imageUrl || 'https://via.placeholder.com/80' %>" alt="<%= item.title %>" class="w-14 h-16 rounded-lg object-cover border border-slate-200 flex-shrink-0">
+                <div class="flex-grow min-w-0">
+                  <h4 class="text-xs sm:text-sm font-bold text-slate-800 truncate"><%= item.title %></h4>
+                  <p class="text-[11px] text-slate-500">
+                    Size: <strong><%= item.size %></strong> • Qty: <strong><%= item.quantity %></strong>
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs sm:text-sm font-extrabold text-slate-900">₹<%= item.price * item.quantity %></p>
+                  <% if (item.originalPrice && item.originalPrice > item.price) { %>
+                    <del class="text-[10px] text-slate-400">₹<%= item.originalPrice * item.quantity %></del>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+
+          <!-- Price Breakdown -->
+          <div class="space-y-2.5 py-4 text-sm border-b border-slate-100">
+            <div class="flex justify-between text-slate-600">
+              <span>Total MRP</span>
+              <span class="font-semibold text-slate-800">₹<%= totalMrp %></span>
+            </div>
+            <div class="flex justify-between text-emerald-600">
+              <span>Discount on MRP</span>
+              <span class="font-bold">− ₹<%= totalSaving %></span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Delivery Charges</span>
+              <span><del class="text-slate-400 mr-1">₹79</del> <strong class="text-emerald-600">FREE</strong></span>
+            </div>
+          </div>
+
+          <!-- Total Payable -->
+          <div class="flex justify-between items-center pt-4 text-base sm:text-lg font-extrabold text-slate-900">
+            <span>Total Payable</span>
+            <span class="text-2xl text-emerald-600">₹<%= cart.totalPrice %></span>
+          </div>
+
+          <% if (totalSaving > 0) { %>
+            <div class="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl px-3 py-2 text-center">
+              🎉 Aap is order par ₹<%= totalSaving %> bacha rahe hain!
+            </div>
+          <% } %>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Mobile Sticky Bottom Payment Bar -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 shadow-2xl z-50 flex items-center justify-between gap-4">
+      <div>
+        <p class="text-[10px] text-slate-500 font-bold uppercase">Total Payable</p>
+        <p class="text-xl font-extrabold text-emerald-600">₹<%= cart.totalPrice %></p>
+      </div>
+      <button 
+        type="button" 
+        onclick="document.getElementById('checkoutForm').requestSubmit()" 
+        id="payBtnMobile"
+        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 px-5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm"
+      >
+        <i class="fa-solid fa-lock text-xs"></i>
+        <span>Pay ₹<%= cart.totalPrice %> Now</span>
+      </button>
+    </div>
+
+  </main>
 
   <script>
-    document.getElementById('orderForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    async function startPayment() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const pincode = document.getElementById('pincode').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const rawAddress = document.getElementById('address').value.trim();
 
-      const customerName = document.getElementById('customerName').value;
-      const phone = document.getElementById('phone').value;
-      const address = document.getElementById('address').value;
-
-      // Backend se Razorpay Order ID lena
-      const res = await fetch('/create-razorpay-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: <%= cart.totalPrice %> })
-      });
-      const data = await res.json();
-
-      if (!data.orderId) {
-        alert('Payment order create karne me dikkat aayi!');
+      if (!customerName || !phone || !rawAddress) {
+        alert('Kripya Naam, Mobile Number aur Delivery Address bharein!');
         return;
       }
 
-      // Razorpay Checkout Popup
-      const options = {
-        key: data.keyId,
-        amount: data.amount,
-        currency: "INR",
-        name: "Apna Store",
-        description: "Order Checkout Payment",
-        order_id: data.orderId,
-        handler: async function (response) {
-          // Payment successful hone par backend me order save karna
-          const verifyRes = await fetch('/verify-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              customerName,
-              phone,
-              address
-            })
-          });
-          const verifyData = await verifyRes.json();
-          if (verifyData.success) {
-            window.location.href = '/order-success';
-          } else {
-            alert('Payment verify nahi ho saki!');
-          }
-        },
-        prefill: {
-          name: customerName,
-          contact: phone
-        },
-        theme: {
-          color: "#2563eb"
-        }
-      };
+      const fullAddress = `${rawAddress}, ${city} - ${pincode}`;
+      const amount = <%= cart.totalPrice %>;
 
-      const rzp = new Razorpay(options);
-      rzp.open();
-    });
+      try {
+        const res = await fetch('/create-razorpay-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+
+        if (!data.orderId) {
+          alert('Order create karne mein error aaya!');
+          return;
+        }
+
+        const options = {
+          key: data.keyId,
+          amount: data.amount,
+          currency: "INR",
+          name: "Apna Store",
+          description: "Order Payment",
+          order_id: data.orderId,
+          prefill: {
+            name: customerName,
+            contact: phone
+          },
+          theme: {
+            color: "#2563eb"
+          },
+          handler: async function (response) {
+            const verifyRes = await fetch('/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                customerName,
+                phone,
+                address: fullAddress
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              window.location.href = '/order-success';
+            } else {
+              alert('Payment verification failed!');
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        alert('Payment gateway load karne mein dikkat aayi: ' + err.message);
+      }
+    }
   </script>
 
 </body>
